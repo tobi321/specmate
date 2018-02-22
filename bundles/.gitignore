@@ -13,3 +13,5 @@ hs_err_pid*
 /specmate-std-env/database/specmate.trace.db
 /specmate-std-env/.externalToolBuilders/org.eclipse.jdt.core.javabuilder.launch
 /specmate-model-plugin/
+
+.gradle/**
