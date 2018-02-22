@@ -93,9 +93,9 @@ public class ConnectorService {
 				IContainer localContainer = getOrCreateLocalContainer(resource, source.getId());
 				Requirement[] reqArray = requirements.toArray(new Requirement[0]);
 				int pointer = 0;
-				int max = requirements.size() - 1;
-				while (pointer <= max) {
-					int upper = Math.max(pointer + 100, max);
+				int max = requirements.size();
+				while (pointer < max) {
+					int upper = Math.min(pointer + 100, max);
 					Requirement[] current = Arrays.copyOfRange(reqArray, pointer, upper);
 					pointer = upper;
 					List<Requirement> tosync = Arrays.asList(current);
@@ -154,6 +154,9 @@ public class ConnectorService {
 	private void buildExtIdMap(Iterator<? extends EObject> iterator, HashMap<String, EObject> requirementsMap) {
 		while (iterator.hasNext()) {
 			EObject content = iterator.next();
+			if (content == null) {
+				continue;
+			}
 			if (content.eClass().getName().equals("Requirement")) {
 				Requirement requirement = (Requirement) content;
 				if (!StringUtils.isEmpty(requirement.getExtId())) {
