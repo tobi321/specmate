@@ -21,7 +21,7 @@ public class AttributeToSQLMapper extends SQLMapper {
 			alterString += " DEFAULT '" + defaultValue + "'";
 		}
 		
-		alterDB(alterString, objectName, attributeName, defaultValue);
+		setDefaultAndExecute(alterString, objectName, attributeName, defaultValue);
 	}
 	
 	public void migrateNewBooleanAttribute(String objectName, String attributeName, Boolean defaultValue) throws SpecmateException {
@@ -33,7 +33,7 @@ public class AttributeToSQLMapper extends SQLMapper {
 			alterString += " DEFAULT " + defaultValue;
 		}
 		
-		alterDB(alterString, objectName, attributeName, defaultValue);
+		setDefaultAndExecute(alterString, objectName, attributeName, defaultValue);
 	}
 	
 	public void migrateNewIntegerAttribute(String objectName, String attributeName, Integer defaultValue) throws SpecmateException {
@@ -45,7 +45,7 @@ public class AttributeToSQLMapper extends SQLMapper {
 			alterString += " DEFAULT " + defaultValue.intValue();
 		}
 		
-		alterDB(alterString, objectName, attributeName, defaultValue);
+		setDefaultAndExecute(alterString, objectName, attributeName, defaultValue);
 	}
 	
 	public void migrateNewDoubleAttribute(String objectName, String attributeName, Double defaultValue) throws SpecmateException {
@@ -57,7 +57,7 @@ public class AttributeToSQLMapper extends SQLMapper {
 			alterString += " DEFAULT " + defaultValue;
 		}
 		
-		alterDB(alterString, objectName, attributeName, defaultValue);
+		setDefaultAndExecute(alterString, objectName, attributeName, defaultValue);
 	}
 	
 	public void migrateNewLongAttribute(String objectName, String attributeName, Long defaultValue) throws SpecmateException {
@@ -69,7 +69,7 @@ public class AttributeToSQLMapper extends SQLMapper {
 			alterString += " DEFAULT " + defaultValue;
 		}
 		
-		alterDB(alterString, objectName, attributeName, defaultValue);
+		setDefaultAndExecute(alterString, objectName, attributeName, defaultValue);
 	}
 	
 	public void migrateNewReference(String objectName, String attributeName) throws SpecmateException {
@@ -105,7 +105,7 @@ public class AttributeToSQLMapper extends SQLMapper {
 		SQLUtil.executeStatements(queries, connection, failmsg);
 	}
 	
-	private void alterDB(String alterString, String objectName, String attributeName, Object defaultValue) throws SpecmateException {
+	private void setDefaultAndExecute(String alterString, String objectName, String attributeName, Object defaultValue) throws SpecmateException {
 		String failmsg = "Migration: Could not add column " + attributeName + " to table " + objectName + ".";
 		List<String> queries = new ArrayList<>();
 		queries.add(alterString);
