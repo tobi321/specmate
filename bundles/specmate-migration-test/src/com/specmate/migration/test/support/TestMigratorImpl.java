@@ -12,6 +12,7 @@ import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.log.LogService;
 import org.osgi.util.tracker.ServiceTracker;
 
 import com.specmate.common.SpecmateException;
@@ -32,6 +33,8 @@ public class TestMigratorImpl extends BaseSQLMigrator {
 	public static final String PID = "com.specmate.migration.test.support.TestMigratorImpl";
 	public static final String KEY_MIGRATOR_TEST = "testcase";
 	private String packageName = "testmodel/artefact";
+	private LogService logService;
+
 	@Override
 	public String getSourceVersion() {
 		return "0";
@@ -72,7 +75,8 @@ public class TestMigratorImpl extends BaseSQLMigrator {
 	}
 	
 	private void migrateAttributeAdded(Connection connection) throws SpecmateException {
-		AttributeToSQLMapper aAdded = new AttributeToSQLMapper(connection, packageName, getSourceVersion(), getTargetVersion());
+		AttributeToSQLMapper aAdded = new AttributeToSQLMapper(connection, logService, packageName, getSourceVersion(), 
+				getTargetVersion());
 		aAdded.migrateNewStringAttribute("folder", "name", "");
 		aAdded.migrateNewStringAttribute("diagram", "name", null);
 		aAdded.migrateNewStringAttribute("file", "name", null);
@@ -81,7 +85,8 @@ public class TestMigratorImpl extends BaseSQLMigrator {
 	}
 	
 	private void migrateSeveralAttributesAdded(Connection connection) throws SpecmateException {
-		AttributeToSQLMapper aAdded = new AttributeToSQLMapper(connection, packageName, getSourceVersion(), getTargetVersion());
+		AttributeToSQLMapper aAdded = new AttributeToSQLMapper(connection, logService, packageName, getSourceVersion(), 
+				getTargetVersion());
 		aAdded.migrateNewStringAttribute("folder", "name", "");
 		aAdded.migrateNewStringAttribute("diagram", "name", null);
 		aAdded.migrateNewStringAttribute("file", "name", null);
@@ -101,11 +106,13 @@ public class TestMigratorImpl extends BaseSQLMigrator {
 		attributeNames.add("length");
 		attributeNames.add("owner");
 		
-		ObjectToSQLMapper oAdded = new ObjectToSQLMapper(connection, packageName, getSourceVersion(), getTargetVersion());
+		ObjectToSQLMapper oAdded = new ObjectToSQLMapper(connection, logService, packageName, getSourceVersion(), 
+				getTargetVersion());
 		oAdded.newObject(objectName, attributeNames);
 		addMigrationStep(oAdded);
 		
-		AttributeToSQLMapper aAdded = new AttributeToSQLMapper(connection, packageName, getSourceVersion(), getTargetVersion());
+		AttributeToSQLMapper aAdded = new AttributeToSQLMapper(connection, logService, packageName, getSourceVersion(), 
+				getTargetVersion());
 		aAdded.migrateNewStringAttribute(objectName, "id", "");
 		aAdded.migrateNewBooleanAttribute(objectName, "tested", false);
 		aAdded.migrateNewLongAttribute(objectName, "length", null);
@@ -116,7 +123,8 @@ public class TestMigratorImpl extends BaseSQLMigrator {
 	}
 	
 	private void migrateAttributeRenamed(Connection connection) throws SpecmateException {
-		AttributeToSQLMapper aRenamed = new AttributeToSQLMapper(connection, packageName, getSourceVersion(), getTargetVersion());
+		AttributeToSQLMapper aRenamed = new AttributeToSQLMapper(connection, logService, packageName, 
+				getSourceVersion(), getTargetVersion());
 		aRenamed.migrateRenameAttribute("Diagram", "tested", "istested");
 		aRenamed.migrateRenameAttribute("File", "tested", "istested");
 		addMigrationStep(aRenamed);
@@ -124,7 +132,8 @@ public class TestMigratorImpl extends BaseSQLMigrator {
 	}
 	
 	private void migrateTypesChanged(Connection connection) throws SpecmateException {
-		AttributeToSQLMapper aTypeChanged = new AttributeToSQLMapper(connection, packageName, getSourceVersion(), getTargetVersion());
+		AttributeToSQLMapper aTypeChanged = new AttributeToSQLMapper(connection, logService, packageName, 
+				getSourceVersion(), getTargetVersion());
 				
 		aTypeChanged.migrateChangeType("File", "shortVar1", EDataType.INT);
 		aTypeChanged.migrateChangeType("File", "shortVar2", EDataType.LONG);
@@ -171,4 +180,10 @@ public class TestMigratorImpl extends BaseSQLMigrator {
 		Assert.assertNotNull(configurationAdmin);
 		return configurationAdmin;
 	}
+	
+	@Reference
+	public void setLogService(LogService logService) {
+		this.logService = logService;
+	}
+
 }

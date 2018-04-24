@@ -6,12 +6,15 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.osgi.service.log.LogService;
+
 import com.specmate.common.SpecmateException;
 
 public class AttributeToSQLMapper extends SQLMapper {
 	
-	public AttributeToSQLMapper(Connection connection, String packageName, String sourceVersion, String targetVersion) {
-		super(connection, packageName, sourceVersion, targetVersion);
+	public AttributeToSQLMapper(Connection connection, LogService logService, String packageName, 
+			String sourceVersion, String targetVersion) {
+		super(connection, logService, packageName, sourceVersion, targetVersion);
 	}
 	
 	public void migrateNewStringAttribute(String objectName, String attributeName, String defaultValue) throws SpecmateException {
