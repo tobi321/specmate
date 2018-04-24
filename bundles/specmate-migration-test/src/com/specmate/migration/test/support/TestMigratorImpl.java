@@ -12,7 +12,6 @@ import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.log.LogService;
 import org.osgi.util.tracker.ServiceTracker;
 
 import com.specmate.common.SpecmateException;
@@ -34,7 +33,7 @@ public class TestMigratorImpl extends BaseSQLMigrator {
 	public static final String PID = "com.specmate.migration.test.support.TestMigratorImpl";
 	public static final String KEY_MIGRATOR_TEST = "testcase";
 	private String packageName = "testmodel/artefact";
-	private LogService logService;
+	
 
 	@Override
 	public String getSourceVersion() {
@@ -194,10 +193,4 @@ public class TestMigratorImpl extends BaseSQLMigrator {
 		Assert.assertNotNull(configurationAdmin);
 		return configurationAdmin;
 	}
-	
-	@Reference
-	public void setLogService(LogService logService) {
-		this.logService = logService;
-	}
-
 }

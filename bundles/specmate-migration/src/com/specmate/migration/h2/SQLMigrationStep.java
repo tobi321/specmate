@@ -9,9 +9,8 @@ import com.specmate.common.SpecmateException;
 public class SQLMigrationStep {
 	private String query;
 	private String failmsg;
-	private PreparedStatement stmt;
-	
-	
+	private PreparedStatement stmt; 
+
 	public SQLMigrationStep(String query, String failmsg) {
 		this.query = query;
 		this.failmsg = failmsg;
@@ -24,7 +23,7 @@ public class SQLMigrationStep {
 	
 	public void execute(Connection connection) throws SQLException {
 		if (stmt == null) {
-			stmt = connection.prepareStatement(query);
+			stmt = connection.prepareStatement(query);  
 		}
 		stmt.execute();
 	}

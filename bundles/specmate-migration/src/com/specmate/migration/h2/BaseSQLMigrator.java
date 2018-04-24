@@ -1,6 +1,7 @@
 package com.specmate.migration.h2;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.LinkedList;
 
 import org.eclipse.emf.cdo.common.model.EMFUtil;
@@ -8,6 +9,8 @@ import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EPackage.Registry;
 import org.eclipse.emf.ecore.impl.EPackageRegistryImpl;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.log.LogService;
 
 import com.specmate.common.SpecmateException;
 import com.specmate.migration.api.IMigrator;
@@ -21,6 +24,7 @@ public abstract class BaseSQLMigrator implements IMigrator {
 	private LinkedList<SQLMigrationStep> migrationSteps;
 	private Connection connection;
 	protected IPackageProvider packageProvider;
+	protected LogService logService;
 	
 	public BaseSQLMigrator() {
 		this.migrationSteps = new LinkedList<>();
@@ -90,5 +94,10 @@ public abstract class BaseSQLMigrator implements IMigrator {
 			migrationSteps.addFirst(stepInfo);
 			migrationSteps.addFirst(stepUnits);
 		}
+	}
+	
+	@Reference
+	public void setLogService(LogService logService) {
+		this.logService = logService;
 	}
 }

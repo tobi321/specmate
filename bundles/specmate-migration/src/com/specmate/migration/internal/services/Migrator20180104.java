@@ -6,9 +6,10 @@ import org.osgi.service.component.annotations.Component;
 
 import com.specmate.common.SpecmateException;
 import com.specmate.migration.api.IMigrator;
+import com.specmate.migration.h2.BaseSQLMigrator;
 
-@Component(property = "sourceVersion=20180104")
-public class Migrator20180104 extends BaseMigrator implements IMigrator {
+@Component(service = IMigrator.class, property = "sourceVersion=20180104")
+public class Migrator20180104 extends BaseSQLMigrator {
 
 	@Override
 	public String getSourceVersion() {
