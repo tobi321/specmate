@@ -25,6 +25,7 @@ import com.specmate.migration.test.AddAttributeTest;
 import com.specmate.migration.test.AddObjectTest;
 import com.specmate.migration.test.AddSeveralAttributesTest;
 import com.specmate.migration.test.ChangedTypesTest;
+import com.specmate.migration.test.ConsistentMigrationTest;
 import com.specmate.migration.test.RenamedAttributeTest;
 import com.specmate.persistency.IPackageProvider;
 
@@ -62,6 +63,8 @@ public class TestMigratorImpl extends BaseSQLMigrator {
 				migrateAttributeRenamed(connection);
 			} else if (testcase.equals(ChangedTypesTest.class.getName())) {
 				migrateTypesChanged(connection);
+			} else if (testcase.equals(ConsistentMigrationTest.class.getName())) {
+				migrateWithError(connection);
 			}
 			
 		} catch (InterruptedException | IOException e) {
@@ -168,6 +171,17 @@ public class TestMigratorImpl extends BaseSQLMigrator {
 		aTypeChanged.migrateChangeType("File", "stringVar5", EDataType.BOOLEAN);
 		
 		addMigrationStep(aTypeChanged);
+		executeMigrationQueries(connection);
+	}
+	
+	private void migrateWithError(Connection connection) throws SpecmateException {
+		AttributeToSQLMapper aAdded = new AttributeToSQLMapper(connection, logService, packageName, getSourceVersion(), 
+				getTargetVersion());
+		
+		aAdded.migrateNewStringAttribute("folder", "name", null);
+		aAdded.migrateNewStringAttribute("folder", "name", null);
+		
+		addMigrationStep(aAdded);
 		executeMigrationQueries(connection);
 	}
 	

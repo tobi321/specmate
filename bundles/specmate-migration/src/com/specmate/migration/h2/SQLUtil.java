@@ -57,6 +57,8 @@ public class SQLUtil {
 		
 		try {
 			connection.setAutoCommit(false);
+			executeStatement("savepoint migration", connection);
+			
 			for (SQLMigrationStep step : steps) {
 				failmsg = step.getFailMsg();
 				step.execute(connection);
@@ -64,7 +66,8 @@ public class SQLUtil {
 			connection.commit();
 		} catch (SQLException e) {
 			try {
-				connection.rollback();
+				//connection.rollback();
+				executeStatement("rollback migration", connection);
 			} catch (SQLException f) {
 				throw new SpecmateException(failmsg + " " + e.getMessage() + " " + f.getMessage());
 			}
