@@ -35,6 +35,10 @@ public class ConsistentMigrationTest extends MigrationTestBase {
 		} catch (SpecmateException e) {
 			assertNotNull(e.getMessage());
 			testModel.setModelName(com.specmate.migration.test.baseline.testmodel.base.BasePackage.class.getName());
+			// At this point, if the rollback works, we the database would be at model version 0 and the target model
+			// is the baseline, i.e. no migration is necessary. However, rollback does not work for schema changing 
+			// operations in H2. Hence, migration is attempted and failed, as there is no migrator for model version 1.
+			// This is expected behavior that we currently cannot fix.
 			persistency.start();
 		}
 		
