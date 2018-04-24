@@ -132,14 +132,13 @@ public class MigratorService implements IMigratorService {
 		try {
 			performMigration(currentVersion);
 		} catch (SpecmateException e) {
-			logService.log(LogService.LOG_ERROR, "Migration failed.");
-			// TODO: handle failed migration
-			// rollback
+			logService.log(LogService.LOG_ERROR, "Migration failed.", e);
 			throw e;
 		} finally {
 			closeConnection();
-			logService.log(LogService.LOG_INFO, "Migration succeeded.");
 		}
+		
+		logService.log(LogService.LOG_INFO, "Migration succeeded.");
 	}
 
 	private String getCurrentModelVersion() throws SpecmateException {
