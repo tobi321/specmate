@@ -13,40 +13,48 @@ public abstract class SQLMapper {
 	protected String packageName;
 	protected String sourceVersion;
 	protected String targetVersion;
+	protected List<SQLMigrationStep> migrationSteps;
+	protected static int externalReferenceId = 0;
 	
 	public SQLMapper(Connection connection, String packageName, String sourceVersion, String targetVersion) {
 		this.connection = connection;
 		this.packageName = packageName;
 		this.sourceVersion = sourceVersion;
 		this.targetVersion = targetVersion;
-	}
-
-	protected List<String> insertExternalReferences(String objectName, List<String> attributeNames) throws SpecmateException {
-		int id = SQLUtil.getIntResult("SELECT id FROM CDO_EXTERNAL_REFS ORDER BY id ASC LIMIT 1", 1, connection);
-		
-		List<String> queries = new ArrayList<>();
-		String baseUri = SPECMATE_URL + targetVersion + "/" + packageName + "#//" + objectName;
-		id = id - 1;
-		queries.add(getInsertExternalReferenceQuery(baseUri, id));
-		for (String name : attributeNames) {
-			String attributeUri = baseUri + "/" + name;
-			id = id - 1;
-			queries.add(getInsertExternalReferenceQuery(attributeUri, id));
-		}
-		
-		return queries;
+		this.migrationSteps = new ArrayList<>();
 	}
 	
-	protected String renameExternalReference(String objectName, String oldAttributeName, String newAttributeName) throws SpecmateException {
+	public List<SQLMigrationStep> getMigrationSteps() {
+		return this.migrationSteps;
+	}
+
+	protected void insertExternalReferences(String objectName, List<String> attributeNames) throws SpecmateException {
+		if (externalReferenceId == 0) {
+			externalReferenceId = SQLUtil.getIntResult("SELECT id FROM CDO_EXTERNAL_REFS ORDER BY id ASC LIMIT 1", 1, connection);
+		}
+		
+		String baseUri = SPECMATE_URL + targetVersion + "/" + packageName + "#//" + objectName;
+		externalReferenceId = externalReferenceId - 1;
+		migrationSteps.add(getInsertExternalReferenceQuery(baseUri, externalReferenceId));
+		for (String name : attributeNames) {
+			String attributeUri = baseUri + "/" + name;
+			externalReferenceId = externalReferenceId - 1;
+			migrationSteps.add(getInsertExternalReferenceQuery(attributeUri, externalReferenceId));
+		}
+	}
+	
+	protected void renameExternalReference(String objectName, String oldAttributeName, String newAttributeName) 
+			throws SpecmateException {
 		String baseUri = SPECMATE_URL + targetVersion + "/" + packageName + "#//" + objectName + "/";
 		String oldUri = baseUri + oldAttributeName;
 		String newUri = baseUri + newAttributeName;
-		return "UPDATE CDO_EXTERNAL_REFS SET uri = '" + newUri + "' WHERE uri = '" + oldUri + "'";
+		migrationSteps.add(new SQLMigrationStep("UPDATE CDO_EXTERNAL_REFS SET uri = '" + newUri + "' WHERE uri = '" + 
+				oldUri + "'"));
 	}
 	
-	private String getInsertExternalReferenceQuery(String uri, int id) {
+	private SQLMigrationStep getInsertExternalReferenceQuery(String uri, int id) throws SpecmateException {
 		Date now = new Date();
-		return "INSERT INTO CDO_EXTERNAL_REFS (ID, URI, COMMITTIME) " +
-				"VALUES (" + id + ", '" + uri + "', " + now.getTime() + ")";
+		return new SQLMigrationStep("INSERT INTO CDO_EXTERNAL_REFS (ID, URI, COMMITTIME) " +
+				"VALUES (" + id + ", '" + uri + "', " + now.getTime() + ")");
 	}
 }

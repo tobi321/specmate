@@ -19,6 +19,12 @@ public class SQLUtil {
 		executeStatements(queries, connection, failmsg);
 	}
 	
+	private static PreparedStatement executeStatement(String sql, Connection connection) throws SQLException {
+		PreparedStatement stmt = connection.prepareStatement(sql);
+		stmt.execute();
+		return stmt;
+	}
+	
 	public static void executeStatements(List<String> queries, Connection connection, String failmsg) throws SpecmateException {
 		List<PreparedStatement> statements = new ArrayList<>();
 		
@@ -39,6 +45,34 @@ public class SQLUtil {
 		} finally {
 			try {
 				closePreparedStatements(statements);
+				connection.setAutoCommit(true);
+			} catch (SQLException e) {
+				throw new SpecmateException(failmsg + " " + e.getMessage());
+			}
+		}
+	}
+	
+	public static void executeStatements(List<SQLMigrationStep> steps, Connection connection) throws SpecmateException {
+		String failmsg = "";
+		
+		try {
+			connection.setAutoCommit(false);
+			for (SQLMigrationStep step : steps) {
+				failmsg = step.getFailMsg();
+				step.execute(connection);
+			}
+			connection.commit();
+		} catch (SQLException e) {
+			try {
+				connection.rollback();
+			} catch (SQLException f) {
+				throw new SpecmateException(failmsg + " " + e.getMessage() + " " + f.getMessage());
+			}
+			
+			throw new SpecmateException(failmsg + " " + e.getMessage());
+		} finally {
+			try {
+				closePreparedStatementsIn(steps);
 				connection.setAutoCommit(true);
 			} catch (SQLException e) {
 				throw new SpecmateException(failmsg + " " + e.getMessage());
@@ -111,14 +145,14 @@ public class SQLUtil {
 	}
 	
 	public static void closePreparedStatements(List<PreparedStatement> statements) throws SQLException {
-		for(PreparedStatement stmt : statements) {
+		for (PreparedStatement stmt : statements) {
 			closePreparedStatement(stmt);
 		}
 	}
 	
-	private static PreparedStatement executeStatement(String sql, Connection connection) throws SQLException {
-		PreparedStatement stmt = connection.prepareStatement(sql);
-		stmt.execute();
-		return stmt;
+	public static void closePreparedStatementsIn(List<SQLMigrationStep> steps) throws SQLException {
+		for (SQLMigrationStep step : steps) {
+			step.close();
+		}
 	}
 }

@@ -11,11 +11,13 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.osgi.util.tracker.ServiceTracker;
 
 import com.specmate.common.SpecmateException;
 import com.specmate.migration.api.IMigrator;
 import com.specmate.migration.h2.AttributeToSQLMapper;
+import com.specmate.migration.h2.BaseSQLMigrator;
 import com.specmate.migration.h2.EDataType;
 import com.specmate.migration.h2.ObjectToSQLMapper;
 import com.specmate.migration.test.AddAttributeTest;
@@ -23,13 +25,13 @@ import com.specmate.migration.test.AddObjectTest;
 import com.specmate.migration.test.AddSeveralAttributesTest;
 import com.specmate.migration.test.ChangedTypesTest;
 import com.specmate.migration.test.RenamedAttributeTest;
+import com.specmate.persistency.IPackageProvider;
 
-@Component(property = "sourceVersion=0")
-public class TestMigratorImpl implements IMigrator {
+@Component(service = IMigrator.class, property = "sourceVersion=0")
+public class TestMigratorImpl extends BaseSQLMigrator {
 	public static final String PID = "com.specmate.migration.test.support.TestMigratorImpl";
 	public static final String KEY_MIGRATOR_TEST = "testcase";
 	private String packageName = "testmodel/artefact";
-
 	@Override
 	public String getSourceVersion() {
 		return "0";
@@ -64,11 +66,18 @@ public class TestMigratorImpl implements IMigrator {
 		}
 	}
 	
+	@Reference
+	public void setModelProviderService(IPackageProvider packageProvider) {
+		this.packageProvider = packageProvider;
+	}
+	
 	private void migrateAttributeAdded(Connection connection) throws SpecmateException {
 		AttributeToSQLMapper aAdded = new AttributeToSQLMapper(connection, packageName, getSourceVersion(), getTargetVersion());
 		aAdded.migrateNewStringAttribute("folder", "name", "");
 		aAdded.migrateNewStringAttribute("diagram", "name", null);
 		aAdded.migrateNewStringAttribute("file", "name", null);
+		addMigrationStep(aAdded);
+		executeMigrationQueries(connection);
 	}
 	
 	private void migrateSeveralAttributesAdded(Connection connection) throws SpecmateException {
@@ -82,6 +91,8 @@ public class TestMigratorImpl implements IMigrator {
 		aAdded.migrateNewIntegerAttribute("diagram", "intamount", -1);
 		aAdded.migrateNewDoubleAttribute("diagram", "doublelength", 0.0);
 		aAdded.migrateNewBooleanAttribute("diagram", "booleanlinked", false);
+		addMigrationStep(aAdded);
+		executeMigrationQueries(connection);
 	}
 	
 	private void migrateObjectAdded(Connection connection) throws SpecmateException {
@@ -92,6 +103,7 @@ public class TestMigratorImpl implements IMigrator {
 		
 		ObjectToSQLMapper oAdded = new ObjectToSQLMapper(connection, packageName, getSourceVersion(), getTargetVersion());
 		oAdded.newObject(objectName, attributeNames);
+		addMigrationStep(oAdded);
 		
 		AttributeToSQLMapper aAdded = new AttributeToSQLMapper(connection, packageName, getSourceVersion(), getTargetVersion());
 		aAdded.migrateNewStringAttribute(objectName, "id", "");
@@ -99,12 +111,16 @@ public class TestMigratorImpl implements IMigrator {
 		aAdded.migrateNewLongAttribute(objectName, "length", null);
 		aAdded.migrateNewStringAttribute(objectName, "owner", null);
 		aAdded.migrateNewReference(objectName, "contents");
+		addMigrationStep(aAdded);
+		executeMigrationQueries(connection);
 	}
 	
 	private void migrateAttributeRenamed(Connection connection) throws SpecmateException {
 		AttributeToSQLMapper aRenamed = new AttributeToSQLMapper(connection, packageName, getSourceVersion(), getTargetVersion());
 		aRenamed.migrateRenameAttribute("Diagram", "tested", "istested");
 		aRenamed.migrateRenameAttribute("File", "tested", "istested");
+		addMigrationStep(aRenamed);
+		executeMigrationQueries(connection);
 	}
 	
 	private void migrateTypesChanged(Connection connection) throws SpecmateException {
@@ -141,6 +157,9 @@ public class TestMigratorImpl implements IMigrator {
 		aTypeChanged.migrateChangeType("File", "stringVar3", EDataType.BOOLEAN);
 		aTypeChanged.migrateChangeType("File", "stringVar4", EDataType.BOOLEAN);
 		aTypeChanged.migrateChangeType("File", "stringVar5", EDataType.BOOLEAN);
+		
+		addMigrationStep(aTypeChanged);
+		executeMigrationQueries(connection);
 	}
 	
 	private ConfigurationAdmin getConfigurationAdmin(BundleContext context) throws InterruptedException {
