@@ -10,8 +10,6 @@ import org.osgi.service.log.LogService;
 
 import com.specmate.common.SpecmateException;
 import com.specmate.migration.api.IMigrator;
-import com.specmate.migration.h2.AttributeToSQLMapper;
-import com.specmate.migration.h2.ObjectToSQLMapper;
 
 @Component(property = "sourceVersion=20180126")
 public class Migrator20180126 implements IMigrator {
@@ -32,25 +30,32 @@ public class Migrator20180126 implements IMigrator {
 
 	@Override
 	public void migrate(Connection connection) throws SpecmateException {
-		updateExternalRefs(connection);
+		// immitate broken migration
+		logService.log(LogService.LOG_INFO, "Simulating broken migration.");
+		throw new SpecmateException("Simulated Broken Migration");
+		// updateExternalRefs(connection);
 
 		// new attribute expected outcome
-		AttributeToSQLMapper expOutcomeAdded = new AttributeToSQLMapper(connection, logService, "model/processes",
-				getSourceVersion(), getTargetVersion());
-		expOutcomeAdded.migrateNewStringAttribute("ProcessStep", "expectedOutcome", "");
+		// AttributeToSQLMapper expOutcomeAdded = new
+		// AttributeToSQLMapper(connection, logService, "model/processes",
+		// getSourceVersion(), getTargetVersion());
+		// expOutcomeAdded.migrateNewStringAttribute("ProcessStep",
+		// "expectedOutcome", "");
 
 		// new object status
-		String objectName = "Status";
-		ObjectToSQLMapper oAdded = new ObjectToSQLMapper(connection, logService, "model/administration",
-				getSourceVersion(), getTargetVersion());
-		oAdded.newObject(objectName);
+		// String objectName = "Status";
+		// ObjectToSQLMapper oAdded = new ObjectToSQLMapper(connection,
+		// logService, "model/administration",
+		// getSourceVersion(), getTargetVersion());
+		// oAdded.newObject(objectName);
 
 		// new attribute value@Status
-		AttributeToSQLMapper valueAdded = new AttributeToSQLMapper(connection, logService, "model/administration",
-				getSourceVersion(), getTargetVersion());
+		// AttributeToSQLMapper valueAdded = new
+		// AttributeToSQLMapper(connection, logService, "model/administration",
+		// getSourceVersion(), getTargetVersion());
 		// value is a reserved term, hence cdo will use the attribute name
 		// "value0"
-		valueAdded.migrateNewStringAttribute(objectName, "value0", "");
+		// valueAdded.migrateNewStringAttribute(objectName, "value0", "");
 	}
 
 	private void updateExternalRefs(Connection connection) throws SpecmateException {

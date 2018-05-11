@@ -51,6 +51,7 @@ public class MigratorService implements IMigratorService {
 
 	private IPackageProvider packageProvider;
 	private BundleContext context;
+	private boolean migrationFailed = false;
 
 	@Activate
 	public void activate(BundleContext context) throws SpecmateException {
@@ -88,6 +89,9 @@ public class MigratorService implements IMigratorService {
 
 	@Override
 	public boolean needsMigration() throws SpecmateException {
+		if (this.migrationFailed) {
+			throw new SpecmateException("Migration still failed.");
+		}
 		try {
 			initiateDBConnection();
 		} catch (SpecmateException e) {
@@ -137,6 +141,9 @@ public class MigratorService implements IMigratorService {
 
 	@Override
 	public void doMigration() throws SpecmateException {
+		if (migrationFailed) {
+			throw new SpecmateException("Migration still failing.");
+		}
 		initiateDBConnection();
 
 		String currentVersion = getCurrentModelVersion();
@@ -145,12 +152,10 @@ public class MigratorService implements IMigratorService {
 			performMigration(currentVersion);
 		} catch (SpecmateException e) {
 			logService.log(LogService.LOG_ERROR, "Migration failed.");
-			// TODO: handle failed migration
-			// rollback
+			this.migrationFailed = true;
 			throw e;
 		} finally {
 			closeConnection();
-			logService.log(LogService.LOG_INFO, "Migration succeeded.");
 		}
 	}
 
