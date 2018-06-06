@@ -15,7 +15,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.emf.cdo.common.id.CDOWithID;
 import org.eclipse.emf.common.util.TreeIterator;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -42,11 +41,22 @@ import com.specmate.persistency.ITransaction;
 
 @Component(immediate = true, configurationPid = ConnectorServiceConfig.PID, configurationPolicy = ConfigurationPolicy.REQUIRE)
 public class ConnectorService {
-	CDOWithID id;
-	List<IRequirementsSource> requirementsSources = new ArrayList<>();
+	/** Number of requirements to sync before committing */
+	public static final int SYNC_CHUNK_SIZE = 100;
+	
+	/** The requirements sources from where to sync */
+	private List<IRequirementsSource> requirementsSources = new ArrayList<>();
+	
+	/** The log service */
 	private LogService logService;
+	
+	/** The persistency serice */
 	private IPersistencyService persistencyService;
+	
+	/** Scheduler for peridicaly starting the requirements sync */
 	private ScheduledExecutorService scheduler;
+	
+	/** The transaction for commiting the changes */
 	private ITransaction transaction;
 
 	@Activate
@@ -92,11 +102,19 @@ public class ConnectorService {
 				}
 				IContainer localContainer = getOrCreateLocalContainer(resource, source.getId());
 				Requirement[] reqArray = requirements.toArray(new Requirement[0]);
-				int pointer = 0;
-				int max = requirements.size() - 1;
+				
+				// pointer to the last requirement handled in the last iteration
+				int pointer = -1;
+				
+				int max = requirements.size()-1;
 				while (pointer < max) {
-					int upper = Math.min(pointer + 100, max);
-					Requirement[] current = Arrays.copyOfRange(reqArray, pointer, upper);
+					// index of the last requirement to copy
+					int upper = Math.min(pointer + SYNC_CHUNK_SIZE, max);
+					
+					// start copying with the first element not already handled (=pointer+1)
+					// copy until index upper+1 (exclusive)
+					Requirement[] current = Arrays.copyOfRange(reqArray, pointer+1, upper+1);
+					
 					pointer = upper;
 					List<Requirement> tosync = Arrays.asList(current);
 					syncContainers(localContainer, tosync, source);
@@ -112,6 +130,15 @@ public class ConnectorService {
 
 	private void syncContainers(IContainer localContainer, Collection<Requirement> requirements,
 			IRequirementsSource source) {
+		HashMap<String, EObject> remoteRequirementsMap = calculateNewRequirements(localContainer, requirements);
+		logService.log(LogService.LOG_INFO, "Adding " + remoteRequirementsMap.size() + " new requirements.");
+
+		// add new requirements to local container and all folders on the way
+		addNewRequirements(localContainer, source, remoteRequirementsMap);
+	}
+
+	private HashMap<String, EObject> calculateNewRequirements(IContainer localContainer,
+			Collection<Requirement> requirements) {
 		// Build hashset (extid -> requirement) for local requirements
 		TreeIterator<EObject> localIterator = localContainer.eAllContents();
 		HashMap<String, EObject> localRequirementsMap = new HashMap<>();
@@ -124,10 +151,11 @@ public class ConnectorService {
 
 		// find new requirements
 		remoteRequirementsMap.keySet().removeAll(localRequirementsMap.keySet());
+		return remoteRequirementsMap;
+	}
 
-		logService.log(LogService.LOG_INFO, "Adding " + remoteRequirementsMap.size() + " new requirements.");
-
-		// add new requirements to local container and all folders on the way
+	private void addNewRequirements(IContainer localContainer, IRequirementsSource source,
+			HashMap<String, EObject> remoteRequirementsMap) {
 		for (Entry<String, EObject> entry : remoteRequirementsMap.entrySet()) {
 			Requirement requirementToAdd = (Requirement) entry.getValue();
 			IContainer reqContainer;
