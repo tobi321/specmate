@@ -19,8 +19,7 @@ import com.specmate.model.support.util.SpecmateEcoreUtil;
 import com.specmate.persistency.ITransaction;
 
 public class AddAttributeTest extends MigrationTestBase {
-	
-	
+
 	public AddAttributeTest() throws Exception {
 		super("attributetest", BasePackage.class.getName());
 	}
@@ -33,7 +32,7 @@ public class AddAttributeTest extends MigrationTestBase {
 
 		assertTrue(root instanceof Folder);
 		Folder rootFolder = (Folder) root;
-		assertEquals("", rootFolder.getName());
+		assertNull(rootFolder.getName());
 		rootFolder.setName("f0");
 
 		EObject diagram = SpecmateEcoreUtil.getEObjectWithId("d0", rootFolder.eContents());

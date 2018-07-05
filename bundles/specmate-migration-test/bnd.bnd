@@ -68,7 +68,8 @@ Test-Cases: \
 	osgi.identity;filter:='(osgi.identity=specmate-persistency-cdo)',\
 	osgi.identity;filter:='(osgi.identity=org.eclipse.emf.cdo.server.ocl)',\
 	osgi.identity;filter:='(osgi.identity=org.apache.servicemix.bundles.junit)',\
-	osgi.identity;filter:='(osgi.identity=specmate-migration)'
+	osgi.identity;filter:='(osgi.identity=specmate-migration)',\
+	osgi.identity;filter:='(osgi.identity=oracle-jdbc)'
 -runbundles: \
 	javax.annotation-api;version='[1.2.0,1.2.1)',\
 	javax.validation.api;version='[1.1.0,1.1.1)',\
@@ -143,7 +144,9 @@ Test-Cases: \
 	specmate-migration;version=snapshot,\
 	specmate-administration;version=snapshot,\
 	specmate-config-api;version=snapshot,\
-	specmate-emfrest-api;version=snapshot
+	specmate-emfrest-api;version=snapshot,\
+	oracle-jdbc;version=snapshot,\
+	org.eclipse.net4j.db.oracle;version='[1.1.200,1.1.201)'
 -runvm: -ea
 -runproperties:\
 	jetty.http.port=8088,\
