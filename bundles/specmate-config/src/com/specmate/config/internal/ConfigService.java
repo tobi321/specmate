@@ -107,7 +107,7 @@ public class ConfigService implements IConfigService {
 				.collect(Collectors.toSet());
 	}
 
-	/** Retreives a configured property. */
+	/** Retreives a configured property. Returns null if property is not found. */
 	@Override
 	public String getConfigurationProperty(String key) {
 		return this.configuration.getProperty(key);
