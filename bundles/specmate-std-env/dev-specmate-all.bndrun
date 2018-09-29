@@ -102,7 +102,6 @@
 	specmate-connectors;version=snapshot,\
 	org.eclipse.emf.cdo;version='[4.5.0,4.5.1)',\
 	org.eclipse.emf.cdo.common;version='[4.5.0,4.5.1)',\
-	org.eclipse.emf.cdo.ecore.retrofit;version='[4.2.300,4.2.301)',\
 	org.eclipse.emf.cdo.net4j;version='[4.1.400,4.1.401)',\
 	org.eclipse.emf.cdo.server;version='[4.5.0,4.5.1)',\
 	org.eclipse.emf.cdo.server.net4j;version='[4.1.300,4.1.301)',\
@@ -187,7 +186,11 @@
 	com.sun.jersey.jersey-server;version='[1.19.0,1.19.1)',\
 	javax.ws.rs.jsr311-api;version='[1.1.1,1.1.2)',\
 	specmate-rest;version=snapshot,\
-	specmate-scheduler;version=snapshot
+	specmate-scheduler;version=snapshot,\
+	com.google.guava;version='[16.0.1,16.0.2)',\
+	org.apache.servicemix.bundles.junit;version='[4.12.0,4.12.1)',\
+	org.eclipse.net4j.jms.api;version='[3.1.200,3.1.201)',\
+	specmate-smt;version=snapshot
 
 -runproperties: \
 	jetty.http.port=8080,\

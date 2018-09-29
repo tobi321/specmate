@@ -1,5 +1,7 @@
 package com.specmate.testspecification.internal.services;
 
+import java.io.IOException;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -8,6 +10,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.FileHandler;
+import java.util.logging.Handler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -23,6 +29,20 @@ import org.sat4j.specs.ISolver;
 import org.sat4j.specs.IVecInt;
 import org.sat4j.specs.TimeoutException;
 import org.sat4j.tools.GateTranslator;
+import org.sosy_lab.common.ShutdownManager;
+import org.sosy_lab.common.configuration.Configuration;
+import org.sosy_lab.common.configuration.InvalidConfigurationException;
+import org.sosy_lab.java_smt.SolverContextFactory;
+import org.sosy_lab.java_smt.SolverContextFactory.Solvers;
+import org.sosy_lab.java_smt.api.BooleanFormula;
+import org.sosy_lab.java_smt.api.BooleanFormulaManager;
+import org.sosy_lab.java_smt.api.FormulaManager;
+import org.sosy_lab.java_smt.api.IntegerFormulaManager;
+import org.sosy_lab.java_smt.api.Model;
+import org.sosy_lab.java_smt.api.NumeralFormula.IntegerFormula;
+import org.sosy_lab.java_smt.api.ProverEnvironment;
+import org.sosy_lab.java_smt.api.SolverContext;
+import org.sosy_lab.java_smt.api.SolverContext.ProverOptions;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
@@ -45,8 +65,11 @@ import com.specmate.model.testspecification.TestSpecification;
 import com.specmate.model.testspecification.TestspecificationFactory;
 import com.specmate.testspecification.internal.services.TaggedBoolean.ETag;
 
-public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNode> {
+import org.osgi.service.log.LogService;
 
+public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNode> {
+	
+	static LogService logService;
 	public CEGTestCaseGenerator(TestSpecification specification) {
 		super(specification, CEGModel.class, CEGNode.class);
 	}
@@ -62,6 +85,8 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			}
 		}
 	}
+	
+	
 
 	/**
 	 * Determines if a node is an input, output or intermediate node.
@@ -101,6 +126,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		Set<NodeEvaluation> inconsistent = evaluations.getRight();
 		int position = 0;
 		for (NodeEvaluation evaluation : consistent) {
+			// TODO: what is consistent and inconsistent
 			TestCase testCase = createTestCase(evaluation, specification, true);
 			testCase.setPosition(position++);
 			specification.getContents().add(testCase);
@@ -168,9 +194,9 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	}
 
 	/**
-	 * Node evaluations are a precursor to test cases. This method computes the
-	 * node evaluations according to the rules in the Specmate systems
-	 * requirements documentation.
+	 * Node evaluations are a precursor to test cases. This method computes the node
+	 * evaluations according to the rules in the Specmate systems requirements
+	 * documentation.
 	 * 
 	 * @param nodes
 	 * @return
@@ -183,6 +209,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		while (!intermediateEvaluations.isEmpty()) {
 			for (NodeEvaluation evaluation : intermediateEvaluations) {
 				consistentEvaluations.remove(evaluation);
+				// TODO: Per evaluation there is only one intermediate node? Why?
 				Optional<IModelNode> intermediateNodeOpt = getAnyIntermediateNode(evaluation);
 				AssertUtil.assertTrue(intermediateNodeOpt.isPresent());
 				IModelNode node = intermediateNodeOpt.get();
@@ -211,8 +238,8 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	}
 
 	/**
-	 * Returns the inital evaluations for the CEG model, where all output nodes
-	 * are set one time true and one time false.
+	 * Returns the inital evaluations for the CEG model, where all output nodes are
+	 * set one time true and one time false.
 	 */
 	private Set<NodeEvaluation> getInitialEvaluations() {
 		Set<NodeEvaluation> evaluations = new HashSet<>();
@@ -247,8 +274,8 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	}
 
 	/**
-	 * Returns evaluations that have intermediate nodes (i.e. nodes that have to
-	 * be evaluated)
+	 * Returns evaluations that have intermediate nodes (i.e. nodes that have to be
+	 * evaluated)
 	 */
 	private Set<NodeEvaluation> getIntermediateEvaluations(Set<NodeEvaluation> evaluations) {
 		HashSet<NodeEvaluation> intermediate = new HashSet<>();
@@ -322,8 +349,8 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	}
 
 	/**
-	 * Sets the value of a node in an evaluation but checks first if it is
-	 * already set with a different value
+	 * Sets the value of a node in an evaluation but checks first if it is already
+	 * set with a different value
 	 * 
 	 * @return false if an inconsistent value would be set in the node
 	 */
@@ -338,8 +365,8 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	}
 
 	/**
-	 * Runs through the list of evaluations and merges the ones that can be
-	 * merged. Identifiey inconsistent evaluations
+	 * Runs through the list of evaluations and merges the ones that can be merged.
+	 * Identifiey inconsistent evaluations
 	 * 
 	 * @throws SpecmateException
 	 */
@@ -475,8 +502,8 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	}
 
 	/**
-	 * Sets the value in an evaluation based on an original evaluation and a
-	 * model value.
+	 * Sets the value in an evaluation based on an original evaluation and a model
+	 * value.
 	 */
 	private void setModelValue(NodeEvaluation originalEvaluation, NodeEvaluation targetEvaluation, int varNameValue) {
 		boolean value = varNameValue > 0;
@@ -516,8 +543,46 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		}
 	}
 
+	// Construct logic from CEG and add it to the translator
 	private void pushCEGStructure(GateTranslator translator) throws ContradictionException {
+		System.out.println("Anfang");
+		SolverContext context = null;
+		try {
+			context = SolverContextFactory.createSolverContext(Solvers.SMTINTERPOL);
+		} catch (Exception e) {
+			System.out.println("Exception");
+		}
+		
+		FormulaManager fmgr = context.getFormulaManager();
+		
+
+		BooleanFormulaManager bmgr = fmgr.getBooleanFormulaManager();
+		IntegerFormulaManager imgr = fmgr.getIntegerFormulaManager();
+
+		IntegerFormula a = imgr.makeVariable("a");
+		// make number is node.getCondition
+		BooleanFormula constraint = bmgr.or(imgr.greaterOrEquals(a, imgr.makeNumber(18)),
+				imgr.lessOrEquals(a, imgr.makeNumber(25)));
+
+		try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
+			prover.addConstraint(constraint);
+			boolean isUnsat = prover.isUnsat();
+			if (!isUnsat) {
+				Model model = prover.getModel();
+				BigInteger value = model.evaluate(a);
+				System.out.println("Evaluation: " + value);
+			}
+		} catch (Exception e) {
+			System.out.println("Exception2");
+		} 
+
 		for (IModelNode node : nodes) {
+			
+			//TODO: Construct logic and set it up with integerformula and boolean formula, get the inner formula (age>25) from node.getCondition and node.getVariable
+			// TODO: Try to use linear arithmetic 
+			// TODO: Focus on [10;20]
+			// TODO: How can we build the logic from the predecessors 
+			// TODO: Only implement functionality for the two cases from the powerpoint!!!!
 			int varForNode = getVarForNode(node);
 			IVecInt vector = getPredecessorVector(node);
 			if (vector.size() > 0) {
@@ -555,8 +620,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	}
 
 	/**
-	 * Equality checker that ignores differences in the fields id, name and
-	 * position
+	 * Equality checker that ignores differences in the fields id, name and position
 	 */
 	private class IdNamePositionIgnoreEqualityHelper extends EqualityHelper {
 		@Override

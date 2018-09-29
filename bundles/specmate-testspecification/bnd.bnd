@@ -6,7 +6,6 @@
 	org.eclipse.osgi.services,\
 	specmate-model-support;version=latest,\
 	org.eclipse.emf.common,\
-	com.google.guava,\
 	org.apache.commons.lang3,\
 	org.eclipse.emf.cdo.common,\
 	javax.ws.rs-api,\
@@ -16,5 +15,7 @@
 	org.sat4j.maxsat,\
 	org.sat4j.pb,\
 	specmate-emfrest-api;version=latest,\
-	specmate-rest;version=latest
+	specmate-rest;version=latest,\
+	specmate-smt;version=latest,\
+	com.google.guava;version=21.0
 Private-Package: com.specmate.testspecification.internal.services
