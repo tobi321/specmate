@@ -69,7 +69,14 @@ import org.osgi.service.log.LogService;
 
 public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNode> {
 	
-	static LogService logService;
+	private static List<BooleanFormula> booleanList = new ArrayList<BooleanFormula>();
+	private static List<IntegerFormula> integerList = new ArrayList<IntegerFormula>();
+	
+	// TODO: make private fields and initialize them in the constructer with the context 
+	private static FormulaManager fmgr = null;
+	private static BooleanFormulaManager bmgr = null;
+	private static IntegerFormulaManager imgr = null;
+	
 	public CEGTestCaseGenerator(TestSpecification specification) {
 		super(specification, CEGModel.class, CEGNode.class);
 	}
@@ -415,6 +422,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			throw new SpecmateException(c);
 		}
 		try {
+			// TOD=: Change 
 			int[] model = maxSat.findModel();
 			return extractEnabledEvaluations(var2EvalMap, model);
 		} catch (TimeoutException e) {
@@ -451,6 +459,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 				// maxSat.newVar(varForNode);
 				TaggedBoolean value = evaluation.get(node);
 				if (value != null) {
+					// TODO: Change
 					if (value.value) {
 						translator.or(maxVar, getVectorForVariables(-varForEval, varForNode));
 					} else {
@@ -493,6 +502,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 				throw new SpecmateException("Could not determine consistent test values.");
 			}
 			for (int v : model) {
+				System.out.println(v);
 				setModelValue(evaluation, filled, v);
 			}
 			return filled;
@@ -505,6 +515,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	 * Sets the value in an evaluation based on an original evaluation and a model
 	 * value.
 	 */
+	
 	private void setModelValue(NodeEvaluation originalEvaluation, NodeEvaluation targetEvaluation, int varNameValue) {
 		boolean value = varNameValue > 0;
 		int varName = (value ? 1 : -1) * varNameValue;
@@ -529,15 +540,19 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		return translator;
 	}
 
+	// TODO: For each node in every evaluation we need to set the boolean value (this is what usually happens) but also the corresponding Integer Formula
+	// We need to check for each node if it is a boolean or if there is also an Integer value behind it --> Future Work 
 	private void pushEvaluation(NodeEvaluation evaluation, GateTranslator translator) throws ContradictionException {
 		for (IModelNode node : nodes) {
 			int varForNode = getVarForNode(node);
 			TaggedBoolean value = evaluation.get(node);
 			if (value != null) {
 				if (value.value) {
-					translator.gateTrue(varForNode);
+					BooleanFormula nodeEqualsTrue = bmgr.equivalence(getBoolVarForNode(node), bmgr.makeTrue());
+					booleanList.add(nodeEqualsTrue);
 				} else {
-					translator.gateFalse(varForNode);
+					BooleanFormula nodeEqualsFalse = bmgr.equivalence(getBoolVarForNode(node), bmgr.makeFalse());
+					booleanList.add(nodeEqualsFalse);
 				}
 			}
 		}
@@ -553,19 +568,34 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			System.out.println("Exception");
 		}
 		
-		FormulaManager fmgr = context.getFormulaManager();
+		fmgr = context.getFormulaManager();
 		
 
-		BooleanFormulaManager bmgr = fmgr.getBooleanFormulaManager();
-		IntegerFormulaManager imgr = fmgr.getIntegerFormulaManager();
+		bmgr = fmgr.getBooleanFormulaManager();
+		imgr = fmgr.getIntegerFormulaManager();
 
 		IntegerFormula a = imgr.makeVariable("a");
+		IntegerFormula c = imgr.makeVariable("c");
+		List<BooleanFormula> list = new ArrayList<BooleanFormula>();
+		
+		list.add(imgr.greaterOrEquals(a, imgr.makeNumber(20)));
+		
+		BooleanFormula aGreater = imgr.greaterOrEquals(a, imgr.makeNumber(20));
+		BooleanFormula cGreater = imgr.greaterOrEquals(c, imgr.makeNumber(8));
+		
+		BooleanFormula b = bmgr.makeVariable("b");
+		BooleanFormula bTrue = bmgr.makeTrue();
+		
+		
+		
 		// make number is node.getCondition
-		BooleanFormula constraint = bmgr.or(imgr.greaterOrEquals(a, imgr.makeNumber(18)),
+		BooleanFormula constraint = bmgr.and(imgr.greaterOrEquals(a, imgr.makeNumber(18)),
 				imgr.lessOrEquals(a, imgr.makeNumber(25)));
 
 		try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
+			prover.addConstraint(aGreater);
 			prover.addConstraint(constraint);
+			
 			boolean isUnsat = prover.isUnsat();
 			if (!isUnsat) {
 				Model model = prover.getModel();
@@ -575,6 +605,8 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		} catch (Exception e) {
 			System.out.println("Exception2");
 		} 
+		
+		// TODO: Ignore for loop and add 
 
 		for (IModelNode node : nodes) {
 			
@@ -583,13 +615,15 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			// TODO: Focus on [10;20]
 			// TODO: How can we build the logic from the predecessors 
 			// TODO: Only implement functionality for the two cases from the powerpoint!!!!
-			int varForNode = getVarForNode(node);
-			IVecInt vector = getPredecessorVector(node);
-			if (vector.size() > 0) {
+			BooleanFormula boolForNode = getBoolVarForNode(node);
+			ArrayList<BooleanFormula> boolList = getPredecessorBooleanList(node);
+			if (!list.isEmpty()) {
 				if (((CEGNode) node).getType() == NodeType.AND) {
-					translator.and(varForNode, vector);
+					BooleanFormula and = bmgr.equivalence(boolForNode, bmgr.and(boolList));  
+					booleanList.add(and);
 				} else {
-					translator.or(varForNode, vector);
+					BooleanFormula or = bmgr.equivalence(boolForNode, bmgr.or(boolList));  
+					booleanList.add(or);
 				}
 			}
 		}
@@ -604,7 +638,27 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	private int getVarForNode(IModelNode node) {
 		return nodes.indexOf(node) + 1;
 	}
-
+	
+	
+	
+	
+	
+	// TODO: MAKE Methods generic!!!!!
+	
+	
+	
+	
+	
+	/** Returns a boolean variable (usable for JavaSMT) for a given CEG node. */
+	private BooleanFormula getBoolVarForNode(IModelNode node) {
+		return bmgr.makeVariable(Integer.toString(nodes.indexOf(node) + 1));
+	}
+	
+	/** Returns an integer variable (usable for JavaSMT) for a given CEG node. */
+	private IntegerFormula getIntVarForNode(IModelNode node) {
+		return imgr.makeVariable(Integer.toString(nodes.indexOf(node) + 1));
+	}
+	
 	/** Returns a variable/value vector for all predeccessors of a node */
 	private IVecInt getPredecessorVector(IModelNode node) {
 		IVecInt vector = new VecInt();
@@ -617,6 +671,20 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			vector.push(var);
 		}
 		return vector;
+	}
+	
+	/** Returns a variable/value list for all predeccessors of a node */
+	private ArrayList<BooleanFormula> getPredecessorBooleanList(IModelNode node) {
+		ArrayList<BooleanFormula> list = new ArrayList<BooleanFormula>();
+		for (IModelConnection conn : node.getIncomingConnections()) {
+			IModelNode pre = conn.getSource();
+			int var = getVarForNode((CEGNode) pre);
+			if (((CEGConnection) conn).isNegate()) {
+				var *= -1;
+			}
+			list.add(bmgr.makeVariable(Integer.toString(var)));
+		}
+		return list;
 	}
 
 	/**
