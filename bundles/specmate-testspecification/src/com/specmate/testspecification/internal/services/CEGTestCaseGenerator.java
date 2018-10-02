@@ -39,12 +39,14 @@ import org.sosy_lab.java_smt.api.BooleanFormulaManager;
 import org.sosy_lab.java_smt.api.FormulaManager;
 import org.sosy_lab.java_smt.api.IntegerFormulaManager;
 import org.sosy_lab.java_smt.api.Model;
+import org.sosy_lab.java_smt.api.Model.ValueAssignment;
 import org.sosy_lab.java_smt.api.NumeralFormula.IntegerFormula;
 import org.sosy_lab.java_smt.api.ProverEnvironment;
 import org.sosy_lab.java_smt.api.SolverContext;
 import org.sosy_lab.java_smt.api.SolverContext.ProverOptions;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
 import com.specmate.common.AssertUtil;
 import com.specmate.common.SpecmateException;
@@ -76,6 +78,8 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	private static FormulaManager fmgr = null;
 	private static BooleanFormulaManager bmgr = null;
 	private static IntegerFormulaManager imgr = null;
+	
+	private static SolverContext context = null;
 	
 	public CEGTestCaseGenerator(TestSpecification specification) {
 		super(specification, CEGModel.class, CEGNode.class);
@@ -413,6 +417,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		// certain node.
 		// see pushEvaluations for the details
 		int maxVar = getAdditionalVar(evaluations.size() + 1);
+		// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		maxSat.newVar(maxVar);
 
 		try {
@@ -423,6 +428,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		}
 		try {
 			// TOD=: Change 
+			// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 			int[] model = maxSat.findModel();
 			return extractEnabledEvaluations(var2EvalMap, model);
 		} catch (TimeoutException e) {
@@ -433,6 +439,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	private Set<NodeEvaluation> extractEnabledEvaluations(Map<Integer, NodeEvaluation> var2EvalMap, int[] model) {
 		Set<NodeEvaluation> toMerge = new HashSet<>();
 		for (int i = 0; i < model.length; i++) {
+			// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 			int var = model[i];
 			if (var <= 0) {
 				continue;
@@ -460,6 +467,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 				TaggedBoolean value = evaluation.get(node);
 				if (value != null) {
 					// TODO: Change
+					// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 					if (value.value) {
 						translator.or(maxVar, getVectorForVariables(-varForEval, varForNode));
 					} else {
@@ -469,6 +477,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			}
 			maxSat.addSoftClause(1, getVectorForVariables(varForEval));
 		}
+		// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		translator.gateTrue(maxVar);
 		return var2EvalMap;
 	}
@@ -478,6 +487,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	}
 
 	private IVecInt getVectorForVariables(int... vars) {
+		// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		IVecInt vector = new VecInt(vars.length + 1);
 		for (int i = 0; i < vars.length; i++)
 			vector.push(vars[i]);
@@ -494,14 +504,48 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 
 	/** Fills out all unset nodes in the given node evaluation */
 	private NodeEvaluation fill(NodeEvaluation evaluation) throws SpecmateException {
+		// return context instead of solver
+		
 		ISolver solver = initSolver(evaluation);
+		
+		
+		try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
+			NodeEvaluation filled = new NodeEvaluation();
+			
+			boolean isUnsat = prover.isUnsat();
+			if (!isUnsat) {
+				Model model = prover.getModel();
+				/*ImmutableList<ValueAssignment> list = prover.getModelAssignments();
+				ArrayList<String> variableNames = new ArrayList<String>();
+				list.forEach(assignment -> variableNames.add(assignment.getName())); */
+				
+				
+			}
+		} catch (Exception e) {
+			System.out.println("Exception2");
+		} 
+		
+		
+		
 		try {
 			NodeEvaluation filled = new NodeEvaluation();
+			// TODO: get Model from SMT solver
+			// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 			int[] model = solver.findModel();
 			if (model == null) {
 				throw new SpecmateException("Could not determine consistent test values.");
 			}
 			for (int v : model) {
+				// TODO: evaluate each node and convert it back to a number 
+				//ImmutableList<> list = model.getModelAssignments();
+				//if(evaluate(Integer.toString( ))) {
+					// Boolean was true, give him the node number as positive int
+				//} else {
+					// Boolean was false, give him the node number as negative int
+				//}
+				
+				// Afterwards remove from the list
+				
 				System.out.println(v);
 				setModelValue(evaluation, filled, v);
 			}
@@ -531,6 +575,12 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	/** Initializes the SAT4J solver. */
 	private GateTranslator initSolver(NodeEvaluation evaluation) throws SpecmateException {
 		GateTranslator translator = new GateTranslator(SolverFactory.newLight());
+		
+		try {
+			context = SolverContextFactory.createSolverContext(Solvers.SMTINTERPOL);
+		} catch (Exception e) {
+			System.out.println("Exception");
+		}
 		try {
 			pushCEGStructure(translator);
 			pushEvaluation(evaluation, translator);
@@ -561,7 +611,6 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	// Construct logic from CEG and add it to the translator
 	private void pushCEGStructure(GateTranslator translator) throws ContradictionException {
 		System.out.println("Anfang");
-		SolverContext context = null;
 		try {
 			context = SolverContextFactory.createSolverContext(Solvers.SMTINTERPOL);
 		} catch (Exception e) {
@@ -606,7 +655,6 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			System.out.println("Exception2");
 		} 
 		
-		// TODO: Ignore for loop and add 
 
 		for (IModelNode node : nodes) {
 			
@@ -619,6 +667,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			ArrayList<BooleanFormula> boolList = getPredecessorBooleanList(node);
 			if (!list.isEmpty()) {
 				if (((CEGNode) node).getType() == NodeType.AND) {
+					// TODO: Add Integer Formula
 					BooleanFormula and = bmgr.equivalence(boolForNode, bmgr.and(boolList));  
 					booleanList.add(and);
 				} else {
