@@ -69,7 +69,7 @@ import org.osgi.service.log.LogService;
 
 public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNode> {
 	
-	static LogService logService;
+	
 	public CEGTestCaseGenerator(TestSpecification specification) {
 		super(specification, CEGModel.class, CEGNode.class);
 	}
@@ -160,10 +160,23 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			List<String> constraints = new ArrayList<>();
 			for (IContainer node : variableToNodeMap.get(parameter.getName())) {
 				TaggedBoolean nodeEval = evaluation.get(node);
-				String condition = ((CEGNode) node).getCondition();
+				String condition = "";
+				Optional<Pair<Integer, Integer>> range = getRange((CEGNode) node);
+				if (range.isPresent()) {
+					condition = setupRangeFormular(range.get());
+				} else {
+					condition = ((CEGNode) node).getCondition();
+				}
+				
 				if (nodeEval != null) {
-					String parameterValue = buildParameterValue(condition, nodeEval.value);
-					constraints.add(parameterValue);
+					if (range.isPresent() && !nodeEval.value) {
+						String parameterValue = buildParameterValue(((CEGNode) node).getCondition(), nodeEval.value);
+						constraints.add(parameterValue);
+					} else {
+						String parameterValue = buildParameterValue(condition, nodeEval.value);
+						constraints.add(parameterValue);
+					}
+					
 				}
 			}
 			String parameterValue = StringUtils.join(constraints, ",");
@@ -545,7 +558,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 
 	// Construct logic from CEG and add it to the translator
 	private void pushCEGStructure(GateTranslator translator) throws ContradictionException {
-		System.out.println("Anfang");
+		
 		SolverContext context = null;
 		try {
 			context = SolverContextFactory.createSolverContext(Solvers.SMTINTERPOL);
@@ -561,7 +574,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 
 		IntegerFormula a = imgr.makeVariable("a");
 		// make number is node.getCondition
-		BooleanFormula constraint = bmgr.or(imgr.greaterOrEquals(a, imgr.makeNumber(18)),
+		BooleanFormula constraint = bmgr.and(imgr.greaterOrEquals(a, imgr.makeNumber(18)),
 				imgr.lessOrEquals(a, imgr.makeNumber(25)));
 
 		try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
@@ -593,6 +606,77 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 				}
 			}
 		}
+	}
+	
+	private Optional<Pair<Integer, Integer>> getRange(CEGNode node) {
+		// if condition is of the form [4;7]
+		String condition = node.getCondition();
+		if(condition.matches("\\[[0-9]+;[0-9]+\\]")) {
+			System.out.println(condition);
+			
+			// condition is in the form 4;7
+			//condition.replaceAll("[\\[\\]]+", "");
+			System.out.println(condition);
+			String lowerBound = condition.replaceAll(";.*$", "");
+			String upperBound = condition.replaceAll("^[^;]+;", "");
+			System.out.println(lowerBound);
+			System.out.println(upperBound);
+			
+			lowerBound = lowerBound.substring(1);
+			upperBound = upperBound.substring(0, upperBound.length() - 1);
+			
+			System.out.println(lowerBound);
+			System.out.println(upperBound);
+			
+			int lowerNumber = Integer.valueOf(lowerBound);
+			int higherNumber = Integer.valueOf(upperBound);
+			
+			if (lowerNumber > higherNumber) {
+				System.out.println("Operands need to be flipped");
+				int temp = lowerNumber; 
+				lowerNumber = higherNumber;
+				higherNumber = temp;
+			}
+			
+			Pair<Integer, Integer> pair = Pair.of(lowerNumber, higherNumber);
+			return Optional.of(pair);
+		} else {
+			System.out.println("Condition does not match");
+			return Optional.empty();
+		}
+	}
+	
+	private String setupRangeFormular(Pair<Integer, Integer> pair) {
+		SolverContext context = null;
+		try {
+			context = SolverContextFactory.createSolverContext(Solvers.SMTINTERPOL);
+		} catch (Exception e) {
+			System.out.println("Exception");
+		}
+		
+		FormulaManager fmgr = context.getFormulaManager();
+		
+
+		BooleanFormulaManager bmgr = fmgr.getBooleanFormulaManager();
+		IntegerFormulaManager imgr = fmgr.getIntegerFormulaManager();
+
+		IntegerFormula a = imgr.makeVariable("a");
+		BooleanFormula constraint = bmgr.and(imgr.greaterOrEquals(a, imgr.makeNumber(pair.getLeft())),
+				imgr.lessOrEquals(a, imgr.makeNumber(pair.getRight())));
+
+		try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
+			prover.addConstraint(constraint);
+			boolean isUnsat = prover.isUnsat();
+			if (!isUnsat) {
+				Model model = prover.getModel();
+				BigInteger value = model.evaluate(a);
+				System.out.println("Evaluation: " + value);
+				return value.toString();
+			}
+		} catch (Exception e) {
+			System.out.println("Exception2");
+		} 
+		return "";
 	}
 
 	/** Returns the CEG node for a given variable (given as int) */
