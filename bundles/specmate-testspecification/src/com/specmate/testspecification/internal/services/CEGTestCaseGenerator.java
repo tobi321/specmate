@@ -36,12 +36,18 @@ import org.sosy_lab.java_smt.SolverContextFactory;
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers;
 import org.sosy_lab.java_smt.api.BooleanFormula;
 import org.sosy_lab.java_smt.api.BooleanFormulaManager;
+import org.sosy_lab.java_smt.api.FloatingPointFormula;
+import org.sosy_lab.java_smt.api.FloatingPointFormulaManager;
+import org.sosy_lab.java_smt.api.Formula;
 import org.sosy_lab.java_smt.api.FormulaManager;
 import org.sosy_lab.java_smt.api.IntegerFormulaManager;
 import org.sosy_lab.java_smt.api.Model;
 import org.sosy_lab.java_smt.api.Model.ValueAssignment;
+import org.sosy_lab.java_smt.api.NumeralFormula;
 import org.sosy_lab.java_smt.api.NumeralFormula.IntegerFormula;
+import org.sosy_lab.java_smt.api.NumeralFormula.RationalFormula;
 import org.sosy_lab.java_smt.api.ProverEnvironment;
+import org.sosy_lab.java_smt.api.RationalFormulaManager;
 import org.sosy_lab.java_smt.api.SolverContext;
 import org.sosy_lab.java_smt.api.SolverContext.ProverOptions;
 
@@ -78,6 +84,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	private static FormulaManager fmgr = null;
 	private static BooleanFormulaManager bmgr = null;
 	private static IntegerFormulaManager imgr = null;
+	private static RationalFormulaManager rmgr = null;
 	
 	private static SolverContext context = null;
 	
@@ -611,17 +618,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	// Construct logic from CEG and add it to the translator
 	private void pushCEGStructure(GateTranslator translator) throws ContradictionException {
 		System.out.println("Anfang");
-		try {
-			context = SolverContextFactory.createSolverContext(Solvers.SMTINTERPOL);
-		} catch (Exception e) {
-			System.out.println("Exception");
-		}
 		
-		fmgr = context.getFormulaManager();
-		
-
-		bmgr = fmgr.getBooleanFormulaManager();
-		imgr = fmgr.getIntegerFormulaManager();
 
 		IntegerFormula a = imgr.makeVariable("a");
 		IntegerFormula c = imgr.makeVariable("c");
@@ -686,6 +683,53 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	/** Returns a variable (usable for SAT4J) for a given CEG node. */
 	private int getVarForNode(IModelNode node) {
 		return nodes.indexOf(node) + 1;
+	}
+	
+	private void initSMTSolver() {
+		try {
+			context = SolverContextFactory.createSolverContext(Solvers.SMTINTERPOL);
+		} catch (Exception e) {
+			System.out.println("Exception");
+		}
+		
+		fmgr = context.getFormulaManager();
+		
+
+		bmgr = fmgr.getBooleanFormulaManager();
+		imgr = fmgr.getIntegerFormulaManager();
+		rmgr = fmgr.getRationalFormulaManager();
+	}
+	
+	// check Model 
+	// TODO: create own FormulaClass to classify the nodes from the CEG
+	
+	private HashMap<IModelNode, Formula> classifyCEG() {
+		HashMap<IModelNode, Formula> map = new HashMap<>();
+		
+		for (IModelNode node: nodes) {
+			// for each node in the CEG check if it is a boolean formula, Integer formula, Floating Point Formula or a simple assignment (e.g. Getränk = Cola) 
+			CEGNode node1 = (CEGNode) node;
+			String condition = node1.getCondition();
+			String description = node1.getDescription();
+			String nodeDescription = description + condition;
+			
+			// Do all sorts of String comparisons to identify the Formula type 
+			
+			// Integer/Floating Point with equal sign e.g Alter = 17.0
+			if (nodeDescription.matches(".*\\s*=\\s*\\d*(\\.)*\\d*")) {
+				map.put(node, imgr.equal(getIntVarForNode(node1), imgr.makeNumber(17.0)));
+			} else if (nodeDescription.matches(".*\\s*≤\\s*\\d*(\\.)*\\d*")) {
+				map.put(node, imgr.lessOrEquals(getIntVarForNode(node1), imgr.makeNumber(17.0)));
+			} else if (nodeDescription.matches(".*\\s*<\\s*\\d*(\\.)*\\d*")) {
+				map.put(node, imgr.lessThan(getIntVarForNode(node1), imgr.makeNumber(17.0)));
+			} else if (nodeDescription.matches(".*\\s*>\\s*\\d*(\\.)*\\d*")) {
+				map.put(node, imgr.greaterThan(getIntVarForNode(node1), imgr.makeNumber(17.0)));
+			} else if (nodeDescription.matches(".*\\s*≥\\s*\\d*(\\.)*\\d*")) {
+				map.put(node, imgr.greaterOrEquals(getIntVarForNode(node1), imgr.makeNumber(17.0)));
+			}
+		}
+		
+		return map;
 	}
 	
 	
