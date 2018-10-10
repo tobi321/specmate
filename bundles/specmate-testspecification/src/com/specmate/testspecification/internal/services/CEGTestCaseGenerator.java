@@ -716,12 +716,15 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			// for each node in the CEG check if it is a boolean formula, Integer formula, Floating Point Formula or a simple assignment (e.g. Getränk = Cola) 
 			CEGNode node1 = (CEGNode) node;
 			String condition = node1.getCondition();
-			String description = node1.getDescription();
+			String description = node1.getVariable();
+			
+			// TODO: Unnecessary 
 			String nodeDescription = description + condition;
 			
 			// Do all sorts of String comparisons to identify the Formula type 
 			
 			// TODO: replace with switch statement 
+			
 			
 			/*
 			 *  Possible assiginments
@@ -740,19 +743,22 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			
 			// Integer/Floating Point with equal sign e.g Alter = 17.0
 			if (nodeDescription.matches(".*\\s*=\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.equal(getIntVarForNode(node1), imgr.makeNumber(17.0)));
+				map.put(node, imgr.equal(getIntVarForNode(node1), imgr.makeNumber(Integer.valueOf(condition.replaceAll("\\D", "")))));
 			} else if (nodeDescription.matches(".*\\s*≤\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.lessOrEquals(getIntVarForNode(node1), imgr.makeNumber(17.0)));
+				map.put(node, imgr.lessOrEquals(getIntVarForNode(node1), imgr.makeNumber(Integer.valueOf(condition.replaceAll("\\D", "")))));
 			} else if (nodeDescription.matches(".*\\s*<\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.lessThan(getIntVarForNode(node1), imgr.makeNumber(17.0)));
+				map.put(node, imgr.lessThan(getIntVarForNode(node1), imgr.makeNumber(Integer.valueOf(condition.replaceAll("\\D", "")))));
 			} else if (nodeDescription.matches(".*\\s*>\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.greaterThan(getIntVarForNode(node1), imgr.makeNumber(17.0)));
+				map.put(node, imgr.greaterThan(getIntVarForNode(node1), imgr.makeNumber(Integer.valueOf(condition.replaceAll("\\D", "")))));
 			} else if (nodeDescription.matches(".*\\s*≥\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.greaterOrEquals(getIntVarForNode(node1), imgr.makeNumber(17.0)));
+				map.put(node, imgr.greaterOrEquals(getIntVarForNode(node1), imgr.makeNumber(Integer.valueOf(condition.replaceAll("\\D", "")))));
 			} else if (nodeDescription.matches(".*is present") || nodeDescription.matches(".*(is)*\\s*(t|T)rue")) {		
 				map.put(node, bmgr.equivalence(bmgr.makeTrue(), getBoolVarForNode(node)));	
 			} else if (nodeDescription.matches(".*(is)*\\s*(f|F)alse")) {
 				map.put(node, bmgr.equivalence(bmgr.makeFalse(), getBoolVarForNode(node)));	
+			} else {
+				// Nothing from the above cases holds, we assume that it is simple assignment of the form 'Variable' = 'property'
+				map.put(node, bmgr.equivalence(getBoolVarForNode(node), bmgr.makeVariable(node1.getCondition())));
 			}
 		}
 		
@@ -772,20 +778,22 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	
 	/** Returns a boolean variable (usable for JavaSMT) for a given CEG node. */
 	private BooleanFormula getBoolVarForNode(IModelNode node) {
-		String index = Integer.toString(nodes.indexOf(node) + 1);
-		if (!booleanVariables.keySet().contains(index)) {
-			booleanVariables.put(index, bmgr.makeVariable("BOOL_" + index));
+		CEGNode nodeCEG = (CEGNode) node;
+		String nodeVar = nodeCEG.getVariable();
+		if (!booleanVariables.keySet().contains(nodeVar)) {
+			booleanVariables.put(nodeVar, bmgr.makeVariable(nodeVar));
 		} 
-		return booleanVariables.get(index);
+		return booleanVariables.get(nodeVar);
 	}
 	
 	/** Returns an integer variable (usable for JavaSMT) for a given CEG node. */
 	private IntegerFormula getIntVarForNode(IModelNode node) {
-		String index = Integer.toString(nodes.indexOf(node) + 1);
-		if (!integerVariables.keySet().contains(index)) {
-			integerVariables.put(index, imgr.makeVariable("INT_" + index));
+		CEGNode nodeCEG = (CEGNode) node;
+		String nodeVar = nodeCEG.getVariable();
+		if (!integerVariables.keySet().contains(nodeVar)) {
+			integerVariables.put(nodeVar, imgr.makeVariable(nodeVar));
 		} 
-		return integerVariables.get(index);
+		return integerVariables.get(nodeVar);
 	}
 	
 	/** Returns a variable/value vector for all predeccessors of a node */
