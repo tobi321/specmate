@@ -743,15 +743,15 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			
 			// Integer/Floating Point with equal sign e.g Alter = 17.0
 			if (nodeDescription.matches(".*\\s*=\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.equal(getIntVarForNode(node1), imgr.makeNumber(Integer.valueOf(condition.replaceAll("\\D", "")))));
+				map.put(node, imgr.equal(getIntVarForNode(node1), imgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
 			} else if (nodeDescription.matches(".*\\s*≤\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.lessOrEquals(getIntVarForNode(node1), imgr.makeNumber(Integer.valueOf(condition.replaceAll("\\D", "")))));
+				map.put(node, imgr.lessOrEquals(getIntVarForNode(node1), imgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
 			} else if (nodeDescription.matches(".*\\s*<\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.lessThan(getIntVarForNode(node1), imgr.makeNumber(Integer.valueOf(condition.replaceAll("\\D", "")))));
+				map.put(node, imgr.lessThan(getIntVarForNode(node1), imgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
 			} else if (nodeDescription.matches(".*\\s*>\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.greaterThan(getIntVarForNode(node1), imgr.makeNumber(Integer.valueOf(condition.replaceAll("\\D", "")))));
+				map.put(node, imgr.greaterThan(getIntVarForNode(node1), imgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
 			} else if (nodeDescription.matches(".*\\s*≥\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.greaterOrEquals(getIntVarForNode(node1), imgr.makeNumber(Integer.valueOf(condition.replaceAll("\\D", "")))));
+				map.put(node, imgr.greaterOrEquals(getIntVarForNode(node1), imgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
 			} else if (nodeDescription.matches(".*is present") || nodeDescription.matches(".*(is)*\\s*(t|T)rue")) {		
 				map.put(node, bmgr.equivalence(bmgr.makeTrue(), getBoolVarForNode(node)));	
 			} else if (nodeDescription.matches(".*(is)*\\s*(f|F)alse")) {
