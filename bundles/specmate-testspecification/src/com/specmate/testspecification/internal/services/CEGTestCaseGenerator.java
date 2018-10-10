@@ -78,6 +78,8 @@ import org.osgi.service.log.LogService;
 public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNode> {
 	
 	private static List<BooleanFormula> booleanList = new ArrayList<BooleanFormula>();
+	private static HashMap<String, BooleanFormula> booleanVariables = new HashMap<String, BooleanFormula>();
+	private static HashMap<String, IntegerFormula> integerVariables = new HashMap<String, IntegerFormula>();
 	private static List<IntegerFormula> integerList = new ArrayList<IntegerFormula>();
 	
 	// TODO: make private fields and initialize them in the constructer with the context 
@@ -90,6 +92,9 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	
 	public CEGTestCaseGenerator(TestSpecification specification) {
 		super(specification, CEGModel.class, CEGNode.class);
+		initSMTSolver();
+		classifyCEG();
+		
 	}
 
 	@Override
@@ -702,6 +707,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	
 	// check Model 
 	// TODO: create own FormulaClass to classify the nodes from the CEG
+	// @return: Map where you can find formulas for each node
 	
 	private HashMap<IModelNode, Formula> classifyCEG() {
 		HashMap<IModelNode, Formula> map = new HashMap<>();
@@ -715,6 +721,23 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			
 			// Do all sorts of String comparisons to identify the Formula type 
 			
+			// TODO: replace with switch statement 
+			
+			/*
+			 *  Possible assiginments
+			 *  	--> Alter = 17; Alter = 17.0; Alter<17 usw
+			 *  
+			 *  	--> Getränk Cola (ohne =) 
+			 *  
+			 *  	--> Getränk is present (standard belegung) 
+			 *  
+			 *  	--> Getränk true
+			 * 
+			 * 
+			 * 
+			 * 
+			 * */
+			
 			// Integer/Floating Point with equal sign e.g Alter = 17.0
 			if (nodeDescription.matches(".*\\s*=\\s*\\d*(\\.)*\\d*")) {
 				map.put(node, imgr.equal(getIntVarForNode(node1), imgr.makeNumber(17.0)));
@@ -726,30 +749,43 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 				map.put(node, imgr.greaterThan(getIntVarForNode(node1), imgr.makeNumber(17.0)));
 			} else if (nodeDescription.matches(".*\\s*≥\\s*\\d*(\\.)*\\d*")) {
 				map.put(node, imgr.greaterOrEquals(getIntVarForNode(node1), imgr.makeNumber(17.0)));
+			} else if (nodeDescription.matches(".*is present") || nodeDescription.matches(".*(is)*\\s*(t|T)rue")) {		
+				map.put(node, bmgr.equivalence(bmgr.makeTrue(), getBoolVarForNode(node)));	
+			} else if (nodeDescription.matches(".*(is)*\\s*(f|F)alse")) {
+				map.put(node, bmgr.equivalence(bmgr.makeFalse(), getBoolVarForNode(node)));	
 			}
 		}
+		
+		for (IModelNode node: map.keySet()){
+
+            String key = node.toString();
+            String value = map.get(node).toString();  
+            System.out.println(key + " " + value);  
+		} 
 		
 		return map;
 	}
 	
-	
-	
-	
-	
+
 	// TODO: MAKE Methods generic!!!!!
-	
-	
-	
 	
 	
 	/** Returns a boolean variable (usable for JavaSMT) for a given CEG node. */
 	private BooleanFormula getBoolVarForNode(IModelNode node) {
-		return bmgr.makeVariable(Integer.toString(nodes.indexOf(node) + 1));
+		String index = Integer.toString(nodes.indexOf(node) + 1);
+		if (!booleanVariables.keySet().contains(index)) {
+			booleanVariables.put(index, bmgr.makeVariable("BOOL_" + index));
+		} 
+		return booleanVariables.get(index);
 	}
 	
 	/** Returns an integer variable (usable for JavaSMT) for a given CEG node. */
 	private IntegerFormula getIntVarForNode(IModelNode node) {
-		return imgr.makeVariable(Integer.toString(nodes.indexOf(node) + 1));
+		String index = Integer.toString(nodes.indexOf(node) + 1);
+		if (!integerVariables.keySet().contains(index)) {
+			integerVariables.put(index, imgr.makeVariable("INT_" + index));
+		} 
+		return integerVariables.get(index);
 	}
 	
 	/** Returns a variable/value vector for all predeccessors of a node */
