@@ -40,6 +40,7 @@ import org.sosy_lab.java_smt.api.FloatingPointFormula;
 import org.sosy_lab.java_smt.api.FloatingPointFormulaManager;
 import org.sosy_lab.java_smt.api.Formula;
 import org.sosy_lab.java_smt.api.FormulaManager;
+import org.sosy_lab.java_smt.api.FunctionDeclaration;
 import org.sosy_lab.java_smt.api.IntegerFormulaManager;
 import org.sosy_lab.java_smt.api.Model;
 import org.sosy_lab.java_smt.api.Model.ValueAssignment;
@@ -79,8 +80,11 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	
 	private static List<BooleanFormula> booleanList = new ArrayList<BooleanFormula>();
 	private static HashMap<String, BooleanFormula> booleanVariables = new HashMap<String, BooleanFormula>();
-	private static HashMap<String, IntegerFormula> integerVariables = new HashMap<String, IntegerFormula>();
+	private static HashMap<String, BooleanFormula> nodeVariables = new HashMap<String, BooleanFormula>();
+	private static HashMap<String, RationalFormula> rationalVariables = new HashMap<String, RationalFormula>();
 	private static List<IntegerFormula> integerList = new ArrayList<IntegerFormula>();
+	HashMap<IModelNode, Formula> nodeMap = new HashMap<>();
+	HashMap<IModelNode, Formula> nodeToMeaningMap = new HashMap<>();
 	
 	// TODO: make private fields and initialize them in the constructer with the context 
 	private static FormulaManager fmgr = null;
@@ -610,10 +614,10 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			TaggedBoolean value = evaluation.get(node);
 			if (value != null) {
 				if (value.value) {
-					BooleanFormula nodeEqualsTrue = bmgr.equivalence(getBoolVarForNode(node), bmgr.makeTrue());
+					BooleanFormula nodeEqualsTrue = bmgr.equivalence(getBoolVarForCEG(node), bmgr.makeTrue());
 					booleanList.add(nodeEqualsTrue);
 				} else {
-					BooleanFormula nodeEqualsFalse = bmgr.equivalence(getBoolVarForNode(node), bmgr.makeFalse());
+					BooleanFormula nodeEqualsFalse = bmgr.equivalence(getBoolVarForCEG(node), bmgr.makeFalse());
 					booleanList.add(nodeEqualsFalse);
 				}
 			}
@@ -625,7 +629,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		System.out.println("Anfang");
 		
 
-		IntegerFormula a = imgr.makeVariable("a");
+		/*IntegerFormula a = imgr.makeVariable("a");
 		IntegerFormula c = imgr.makeVariable("c");
 		List<BooleanFormula> list = new ArrayList<BooleanFormula>();
 		
@@ -656,7 +660,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		} catch (Exception e) {
 			System.out.println("Exception2");
 		} 
-		
+		*/
 
 		for (IModelNode node : nodes) {
 			
@@ -665,9 +669,9 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			// TODO: Focus on [10;20]
 			// TODO: How can we build the logic from the predecessors 
 			// TODO: Only implement functionality for the two cases from the powerpoint!!!!
-			BooleanFormula boolForNode = getBoolVarForNode(node);
+			BooleanFormula boolForNode = getBoolVarForCEG(node);
 			ArrayList<BooleanFormula> boolList = getPredecessorBooleanList(node);
-			if (!list.isEmpty()) {
+			if (!boolList.isEmpty()) {
 				if (((CEGNode) node).getType() == NodeType.AND) {
 					// TODO: Add Integer Formula
 					BooleanFormula and = bmgr.equivalence(boolForNode, bmgr.and(boolList));  
@@ -678,6 +682,25 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 				}
 			}
 		}
+		for (String text: nodeVariables.keySet()){
+
+            String value = nodeVariables.get(text).toString();  
+            System.out.println(text + " " + value);  
+		} 
+		for(BooleanFormula f: booleanList) {
+			System.out.println("BooleanFormula: " + f.toString());
+		}
+		
+		for(IModelNode mapNode: nodeMap.keySet()) {
+			int index = nodes.indexOf(mapNode) + 1; 
+			nodeToMeaningMap.put(mapNode, bmgr.equivalence(nodeVariables.get(Integer.toString(index)), (BooleanFormula) nodeMap.get(mapNode)));
+		}
+		for (IModelNode node: nodeToMeaningMap.keySet()){
+
+            String value = nodeToMeaningMap.get(node).toString();  
+            System.out.println("nodeToMeaningMap:" + node + " " + value);  
+		} 
+		
 	}
 
 	/** Returns the CEG node for a given variable (given as int) */
@@ -721,7 +744,6 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			// TODO: Unnecessary 
 			String nodeDescription = description + condition;
 			
-			// Do all sorts of String comparisons to identify the Formula type 
 			
 			// TODO: replace with switch statement 
 			
@@ -736,22 +758,19 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			 *  
 			 *  	--> Getränk true
 			 * 
-			 * 
-			 * 
-			 * 
 			 * */
 			
 			// Integer/Floating Point with equal sign e.g Alter = 17.0
 			if (nodeDescription.matches(".*\\s*=\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.equal(getIntVarForNode(node1), imgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
+				map.put(node, rmgr.equal(getRatVarForNode(node1), rmgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
 			} else if (nodeDescription.matches(".*\\s*≤\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.lessOrEquals(getIntVarForNode(node1), imgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
+				map.put(node, rmgr.lessOrEquals(getRatVarForNode(node1), rmgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
 			} else if (nodeDescription.matches(".*\\s*<\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.lessThan(getIntVarForNode(node1), imgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
+				map.put(node, rmgr.lessThan(getRatVarForNode(node1), rmgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
 			} else if (nodeDescription.matches(".*\\s*>\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.greaterThan(getIntVarForNode(node1), imgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
+				map.put(node, rmgr.greaterThan(getRatVarForNode(node1), rmgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
 			} else if (nodeDescription.matches(".*\\s*≥\\s*\\d*(\\.)*\\d*")) {
-				map.put(node, imgr.greaterOrEquals(getIntVarForNode(node1), imgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
+				map.put(node, rmgr.greaterOrEquals(getRatVarForNode(node1), rmgr.makeNumber(Double.valueOf(condition.replaceAll("[^0-9.]", "")))));
 			} else if (nodeDescription.matches(".*is present") || nodeDescription.matches(".*(is)*\\s*(t|T)rue")) {		
 				map.put(node, bmgr.equivalence(bmgr.makeTrue(), getBoolVarForNode(node)));	
 			} else if (nodeDescription.matches(".*(is)*\\s*(f|F)alse")) {
@@ -768,6 +787,8 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
             String value = map.get(node).toString();  
             System.out.println(key + " " + value);  
 		} 
+		
+		nodeMap = map;
 		
 		return map;
 	}
@@ -786,14 +807,22 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		return booleanVariables.get(nodeVar);
 	}
 	
+	private BooleanFormula getBoolVarForCEG(IModelNode node) {
+		String index = Integer.toString(nodes.indexOf(node) + 1);
+ 		if (!nodeVariables.keySet().contains(index)) {
+ 			nodeVariables.put(index, bmgr.makeVariable(index));
+ 		} 
+ 		return nodeVariables.get(index);
+	}
+	
 	/** Returns an integer variable (usable for JavaSMT) for a given CEG node. */
-	private IntegerFormula getIntVarForNode(IModelNode node) {
+	private RationalFormula getRatVarForNode(IModelNode node) {
 		CEGNode nodeCEG = (CEGNode) node;
 		String nodeVar = nodeCEG.getVariable();
-		if (!integerVariables.keySet().contains(nodeVar)) {
-			integerVariables.put(nodeVar, imgr.makeVariable(nodeVar));
+		if (!rationalVariables.keySet().contains(nodeVar)) {
+			rationalVariables.put(nodeVar, rmgr.makeVariable(nodeVar));
 		} 
-		return integerVariables.get(nodeVar);
+		return rationalVariables.get(nodeVar);
 	}
 	
 	/** Returns a variable/value vector for all predeccessors of a node */
