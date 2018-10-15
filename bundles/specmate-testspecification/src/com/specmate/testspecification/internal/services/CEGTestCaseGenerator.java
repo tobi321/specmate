@@ -528,14 +528,29 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
 			NodeEvaluation filled = new NodeEvaluation();
 			
+			// Add constraints here
+			for(BooleanFormula formula: booleanList) {
+				prover.addConstraint(formula);
+			} 
+			booleanList.clear();
+			for(IModelNode node: nodeToMeaningMap.keySet()) {
+				prover.addConstraint((BooleanFormula) nodeToMeaningMap.get(node));
+			}  
+			nodeToMeaningMap.clear();
+			//prover.addConstraint(booleanList.get(1));
+			
+			
 			boolean isUnsat = prover.isUnsat();
 			if (!isUnsat) {
 				Model model = prover.getModel();
-				/*ImmutableList<ValueAssignment> list = prover.getModelAssignments();
-				ArrayList<String> variableNames = new ArrayList<String>();
-				list.forEach(assignment -> variableNames.add(assignment.getName())); */
+				ImmutableList<ValueAssignment> list = prover.getModelAssignments();
+				//ArrayList<String> variableNames = new ArrayList<String>();
+				//list.forEach(assignment -> variableNames.add(assignment.getName())); 
+				System.out.println(list.toString());
 				
 				
+			} else {
+				System.out.println("Unsat");
 			}
 		} catch (Exception e) {
 			System.out.println("Exception2");
@@ -586,17 +601,19 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		} else {
 			targetEvaluation.put(node, new TaggedBoolean(value, ETag.AUTO));
 		}
+		
+		System.out.println("Target Evaluation: " + targetEvaluation.toString());
 	}
 
 	/** Initializes the SAT4J solver. */
 	private GateTranslator initSolver(NodeEvaluation evaluation) throws SpecmateException {
 		GateTranslator translator = new GateTranslator(SolverFactory.newLight());
 		
-		try {
-			context = SolverContextFactory.createSolverContext(Solvers.SMTINTERPOL);
+		/*try {
+			context = SolverContextFactory.createSolverContext(Solvers.PRINCESS);
 		} catch (Exception e) {
 			System.out.println("Exception");
-		}
+		} */
 		try {
 			pushCEGStructure(translator);
 			pushEvaluation(evaluation, translator);
