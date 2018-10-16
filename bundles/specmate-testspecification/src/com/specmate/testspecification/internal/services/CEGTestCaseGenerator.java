@@ -521,12 +521,15 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	/** Fills out all unset nodes in the given node evaluation */
 	private NodeEvaluation fill(NodeEvaluation evaluation) throws SpecmateException {
 		// return context instead of solver
+		ArrayList<Integer> modelList = new ArrayList<Integer> ();
 		
 		ISolver solver = initSolver(evaluation);
 		
+		NodeEvaluation filled = new NodeEvaluation();
+		
 		
 		try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
-			NodeEvaluation filled = new NodeEvaluation();
+			
 			
 			// Add constraints here
 			for(BooleanFormula formula: booleanList) {
@@ -548,6 +551,20 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 				//list.forEach(assignment -> variableNames.add(assignment.getName())); 
 				System.out.println(list.toString());
 				
+				for(ValueAssignment b: list) {
+					// Is the entry a node variable
+					if(b.getName().matches("[0-9]")) {
+						
+
+						if((boolean) b.getValue()) {
+							// Is the variable true add the name with positive sign 
+							modelList.add(Integer.valueOf(b.getName()));
+						} else {
+							// Is the variable false add the name with negative sign
+							modelList.add(-Integer.valueOf(b.getName()));
+						}
+					}
+				}
 				
 			} else {
 				System.out.println("Unsat");
@@ -556,9 +573,13 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			System.out.println("Exception2");
 		} 
 		
+		for (int v : modelList) {
+			setModelValue(evaluation, filled, v);
+		}
 		
+		return filled;
 		
-		try {
+		/*try {
 			NodeEvaluation filled = new NodeEvaluation();
 			// TODO: get Model from SMT solver
 			// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -583,7 +604,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			return filled;
 		} catch (TimeoutException e) {
 			throw new SpecmateException(e);
-		}
+		} */
 	}
 
 	/**
@@ -681,11 +702,6 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 
 		for (IModelNode node : nodes) {
 			
-			//TODO: Construct logic and set it up with integerformula and boolean formula, get the inner formula (age>25) from node.getCondition and node.getVariable
-			// TODO: Try to use linear arithmetic 
-			// TODO: Focus on [10;20]
-			// TODO: How can we build the logic from the predecessors 
-			// TODO: Only implement functionality for the two cases from the powerpoint!!!!
 			BooleanFormula boolForNode = getBoolVarForCEG(node);
 			ArrayList<BooleanFormula> boolList = getPredecessorBooleanList(node);
 			if (!boolList.isEmpty()) {
