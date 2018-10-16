@@ -641,7 +641,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			Pair<Integer, Integer> pair = Pair.of(lowerNumber, higherNumber);
 			return Optional.of(pair);
 		} else {
-			System.out.println("Condition does not match");
+			System.out.println("Condition does not match for range operator");
 			return Optional.empty();
 		}
 	}
