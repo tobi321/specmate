@@ -32,6 +32,7 @@ import org.sat4j.tools.GateTranslator;
 import org.sosy_lab.common.ShutdownManager;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
+import org.sosy_lab.common.rationals.Rational;
 import org.sosy_lab.java_smt.SolverContextFactory;
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers;
 import org.sosy_lab.java_smt.api.BooleanFormula;
@@ -47,13 +48,17 @@ import org.sosy_lab.java_smt.api.Model.ValueAssignment;
 import org.sosy_lab.java_smt.api.NumeralFormula;
 import org.sosy_lab.java_smt.api.NumeralFormula.IntegerFormula;
 import org.sosy_lab.java_smt.api.NumeralFormula.RationalFormula;
+import org.sosy_lab.java_smt.api.OptimizationProverEnvironment;
+import org.sosy_lab.java_smt.api.OptimizationProverEnvironment.OptStatus;
 import org.sosy_lab.java_smt.api.ProverEnvironment;
 import org.sosy_lab.java_smt.api.RationalFormulaManager;
 import org.sosy_lab.java_smt.api.SolverContext;
 import org.sosy_lab.java_smt.api.SolverContext.ProverOptions;
+import org.sosy_lab.java_smt.api.SolverException;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.specmate.common.AssertUtil;
 import com.specmate.common.SpecmateException;
@@ -97,6 +102,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	public CEGTestCaseGenerator(TestSpecification specification) {
 		super(specification, CEGModel.class, CEGNode.class);
 		initSMTSolver();
+		//optimization();
 		classifyCEG();
 		
 	}
@@ -733,9 +739,63 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
             String value = nodeToMeaningMap.get(node).toString();  
             System.out.println("nodeToMeaningMap:" + node + " " + value);  
 		} 
-		
 	}
+		
+	private void optimization() {
+		try (OptimizationProverEnvironment optProver = context.newOptimizationProverEnvironment()) {
+			   // create some symbols and formulas
+		    IntegerFormula x = imgr.makeVariable("x");
+		    IntegerFormula y = imgr.makeVariable("y");
+		    IntegerFormula z = imgr.makeVariable("z");
 
+		    IntegerFormula zero = imgr.makeNumber(0);
+		    IntegerFormula four = imgr.makeNumber(4);
+		    IntegerFormula ten = imgr.makeNumber(10);
+
+		    IntegerFormula scoreBasic = imgr.makeNumber(0);
+		    IntegerFormula scoreLow = imgr.makeNumber(2);
+		    IntegerFormula scoreMedium = imgr.makeNumber(4);
+		    IntegerFormula scoreHigh = imgr.makeNumber(10);
+
+		    // add some very important constraints: x<10, y<10, z<10, 10=x+y+z
+		    optProver.addConstraint(
+		        bmgr.and(
+		            imgr.lessOrEquals(x, ten), // very important -> direct constraint
+		            imgr.lessOrEquals(y, ten), // very important -> direct constraint
+		            imgr.lessOrEquals(z, ten), // very important -> direct constraint
+		            imgr.equal(ten, imgr.add(x, imgr.add(y, z)))));
+
+		    // generate weighted formulas: if a formula should be satisfied,
+		    // use higher weight for the positive instance than for its negated instance.
+		    List<IntegerFormula> weights =
+		        Lists.newArrayList(
+		            bmgr.ifThenElse(imgr.lessOrEquals(x, zero), scoreHigh, scoreBasic), // important
+		            bmgr.ifThenElse(imgr.lessOrEquals(x, four), scoreHigh, scoreBasic), // important
+		            bmgr.ifThenElse(imgr.lessOrEquals(y, zero), scoreMedium, scoreBasic), // less important
+		            bmgr.ifThenElse(imgr.lessOrEquals(y, four), scoreMedium, scoreBasic), // less important
+		            bmgr.ifThenElse(imgr.lessOrEquals(z, zero), scoreLow, scoreBasic), // not important
+		            bmgr.ifThenElse(imgr.lessOrEquals(z, four), scoreHigh, scoreBasic) // important
+		            );
+
+		    // Maximize sum of weights
+		    int handle = optProver.maximize(imgr.sum(weights));
+
+		    OptStatus response = optProver.check();
+		    assert response == OptStatus.OPT;
+
+		    // for integer theory we get the optimal solution directly as model.
+		    // ideal solution: sum=32 with e.g. x=0,y=6,z=4  or  x=0,y=7,z=3  or  x=0,y=8,z=2 ...
+		    System.out.println("maximal sum " + optProver.upper(handle, Rational.ZERO).get() + "with model" + optProver.getModel());
+		} catch (SolverException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		    
+	}
+	
 	/** Returns the CEG node for a given variable (given as int) */
 	private IModelNode getNodeForVar(int i) {
 		return nodes.get(i - 1);
