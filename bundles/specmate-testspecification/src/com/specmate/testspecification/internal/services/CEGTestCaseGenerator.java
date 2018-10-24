@@ -55,6 +55,7 @@ import org.sosy_lab.java_smt.api.RationalFormulaManager;
 import org.sosy_lab.java_smt.api.SolverContext;
 import org.sosy_lab.java_smt.api.SolverContext.ProverOptions;
 import org.sosy_lab.java_smt.api.SolverException;
+import org.sosy_lab.java_smt.solvers.z3.*;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -808,7 +809,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	
 	private void initSMTSolver() {
 		try {
-			context = SolverContextFactory.createSolverContext(Solvers.SMTINTERPOL);
+			context = SolverContextFactory.createSolverContext(Solvers.Z3);
 		} catch (Exception e) {
 			System.out.println("Exception");
 		}

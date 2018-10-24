@@ -2,7 +2,11 @@
 	jar/java-smt-1.0.1.jar;version=file,\
 	jar/common-0.3000-38-gcdb252b.jar;version=file,\
 	jar/smtinterpol-2.1-255-gcdd5908-comp.jar;version=file,\
+	jar/com.microsoft.z3.jar;version=file,\
 	com.google.guava;version=21.0
+Bundle-NativeCode: jar/libz3.dylib ; jar/libz3java.dylib ;
+osname=MacOSX ; 
+processor=x86
 Export-Package: \
 	org.sosy_lab,\
 	org.sosy_lab.common,\
