@@ -440,6 +440,8 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		// see pushEvaluations for the details
 		int maxVar = getAdditionalVar(evaluations.size() + 1);
 		// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		
+		// maxSat.newVar tells the maxSat solver how many variables are needed 
 		maxSat.newVar(maxVar);
 
 		try {
@@ -489,6 +491,10 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 				TaggedBoolean value = evaluation.get(node);
 				if (value != null) {
 					// TODO: Change
+					// Why does the translator get the formula [maxVar <=> (not varForEval OR varForNode) ] where (not varForEval OR varForNode) represents (varForEval => varForNode)
+					
+					
+					// TODO: for each evalution construct the forumula (evaluation nodes <=> s_i) and then check all s_i against each other 
 					// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 					if (value.value) {
 						translator.or(maxVar, getVectorForVariables(-varForEval, varForNode));
