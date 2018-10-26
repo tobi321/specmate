@@ -489,13 +489,23 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 				int varForNode = getVarForNode(node);
 				// maxSat.newVar(varForNode);
 				TaggedBoolean value = evaluation.get(node);
+				
+				// if the node is part of the evaluation, then the value is not null
 				if (value != null) {
-					// TODO: Change
 					// Why does the translator get the formula [maxVar <=> (not varForEval OR varForNode) ] where (not varForEval OR varForNode) represents (varForEval => varForNode)
 					
 					
-					// TODO: for each evalution construct the forumula (evaluation nodes <=> s_i) and then check all s_i against each other 
-					// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+					/* TODO: for each evaluation construct the forumula (evaluation nodes <=> s_i) and then check all s_i against each other 
+					 * 			--> we do not need to construct a s_i because we already have the nodeVariables, which represent the formulas inside the nodes
+					 * 				--> maybe we cannot use the nodeVariables as we cannot change the value of them??
+					 * 
+					 *  get the specific node from the evaluations, with the node we can get the formula (use the hashmap) and set each formula to the corresponding value of the evaluation
+					 * 
+					 *  As the nodeVariables are already intertwined with the meaning (formula) of a node we can just use the nodeVariables (1,2,..) 
+					 * 
+					 * */ 
+					
+					
 					if (value.value) {
 						translator.or(maxVar, getVectorForVariables(-varForEval, varForNode));
 					} else {
@@ -846,7 +856,6 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			
 			// TODO: replace with switch statement 
 			
-			
 			/*
 			 *  Possible assiginments
 			 *  	--> Alter = 17; Alter = 17.0; Alter<17 usw
@@ -891,7 +900,6 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		
 		return map;
 	}
-	
 
 	// TODO: MAKE Methods generic!!!!!
 	
