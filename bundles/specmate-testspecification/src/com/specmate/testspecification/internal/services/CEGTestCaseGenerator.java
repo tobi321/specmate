@@ -88,6 +88,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	private static HashMap<String, BooleanFormula> nodeVariables = new HashMap<String, BooleanFormula>();
 	private static HashMap<String, RationalFormula> rationalVariables = new HashMap<String, RationalFormula>();
 	private static List<IntegerFormula> integerList = new ArrayList<IntegerFormula>();
+	private static HashMap<Integer, List<BooleanFormula>> mergeCanditatesList = new HashMap<Integer, List<BooleanFormula>>();
 	HashMap<IModelNode, Formula> nodeMap = new HashMap<>();
 	HashMap<IModelNode, Formula> nodeToMeaningMap = new HashMap<>();
 	
@@ -447,14 +448,17 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		try {
 			pushCEGStructure(translator);
 			var2EvalMap = pushEvaluations(evaluations, translator, maxSat, maxVar);
+			
 		} catch (ContradictionException c) {
 			throw new SpecmateException(c);
 		}
 		try {
 			// TOD=: Change 
 			// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			
 			int[] model = maxSat.findModel();
-			return extractEnabledEvaluations(var2EvalMap, model);
+			//return extractEnabledEvaluations(var2EvalMap, model);
+			return getModelWithoutMAXSAT(var2EvalMap);
 		} catch (TimeoutException e) {
 			throw new SpecmateException(e);
 		}
@@ -479,9 +483,10 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	private Map<Integer, NodeEvaluation> pushEvaluations(Set<NodeEvaluation> evaluations, GateTranslator translator,
 			WeightedMaxSatDecorator maxSat, int maxVar) throws ContradictionException {
 		Map<Integer, NodeEvaluation> var2EvalMap = new HashMap<>();
-
+		 
 		int nextVar = 1;
 		for (NodeEvaluation evaluation : evaluations) {
+			List<BooleanFormula> evaluationFormulas = new ArrayList<BooleanFormula>();
 			int varForEval = getAdditionalVar(nextVar);
 			var2EvalMap.put(varForEval, evaluation);
 			nextVar++;
@@ -506,18 +511,79 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 					 * */ 
 					
 					
+					
+					
+					
 					if (value.value) {
+						evaluationFormulas.add(bmgr.equivalence((BooleanFormula) nodeMap.get(node), bmgr.makeTrue()));
+						
 						translator.or(maxVar, getVectorForVariables(-varForEval, varForNode));
 					} else {
+						evaluationFormulas.add(bmgr.equivalence((BooleanFormula) nodeMap.get(node), bmgr.makeFalse()));
+						
 						translator.or(maxVar, getVectorForVariables(-varForEval, -varForNode));
 					}
 				}
 			}
+			mergeCanditatesList.put(varForEval, evaluationFormulas);
+			
 			maxSat.addSoftClause(1, getVectorForVariables(varForEval));
 		}
 		// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		translator.gateTrue(maxVar);
+		
 		return var2EvalMap;
+	}
+	
+	private boolean listsAreSat(List<BooleanFormula> list1, List<BooleanFormula> list2) {
+		
+		try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
+			for(BooleanFormula constraint: list1) {
+				prover.addConstraint(constraint);
+			}
+			for(BooleanFormula constraint: list2) {
+				prover.addConstraint(constraint);
+			}
+			
+			boolean isUnsat = prover.isUnsat();
+			if (!isUnsat) {
+				// The two evaluations can be satisfied together, add 3rd evaluation and check if this is also sat
+				return true;
+			}	
+		} catch (Exception e) {
+			System.out.print("Exception while minimizing");
+		}
+		return false;
+	}
+	
+	private Set<NodeEvaluation> getModelWithoutMAXSAT(Map<Integer, NodeEvaluation> var2EvalMap) {
+		/*
+		 *  TODO: Check if first & second entry of mergeCanditatesList is satisifable together if yes, then we can remove both entries. 
+		 *  		Instead of these two entries, we add one entry where the formulas from both entries are inserted
+		 *  
+		 *  make a method which returns a boolean if both
+		 *  
+		 *  First entry starts at nodes.size + 1
+		 * */
+		List<BooleanFormula> list1 = mergeCanditatesList.get(nodes.size() + 1);
+		List<BooleanFormula> list2 = mergeCanditatesList.get(nodes.size() + 2);
+		List<BooleanFormula> list3 = mergeCanditatesList.get(nodes.size() + 3);
+		
+		Set<NodeEvaluation> mergeCandidates = new HashSet<>();
+		
+		if(listsAreSat(list1, list2)) {
+			// Combine list1 and list2 and call listsAreSat(list1&2, list3)
+			list1.addAll(list2);	
+			mergeCandidates.add(var2EvalMap.get(nodes.size()+1));
+			mergeCandidates.add(var2EvalMap.get(nodes.size()+2));
+		}
+		if(listsAreSat(list1, list3)) {
+			mergeCandidates.add(var2EvalMap.get(nodes.size()+3));
+		} else {
+			
+		}
+		
+		return mergeCandidates;
 	}
 
 	private int getAdditionalVar(int i) {
