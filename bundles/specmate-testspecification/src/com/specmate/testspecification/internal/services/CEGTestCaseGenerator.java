@@ -565,22 +565,20 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		 *  
 		 *  First entry starts at nodes.size + 1
 		 * */
-		List<BooleanFormula> list1 = mergeCanditatesList.get(nodes.size() + 1);
-		List<BooleanFormula> list2 = mergeCanditatesList.get(nodes.size() + 2);
-		List<BooleanFormula> list3 = mergeCanditatesList.get(nodes.size() + 3);
-		
+		int index = nodes.size() + 1;
+		List<BooleanFormula> list1 = mergeCanditatesList.get(index);
+		List<BooleanFormula> list2 = new ArrayList<>();
 		Set<NodeEvaluation> mergeCandidates = new HashSet<>();
 		
-		if(listsAreSat(list1, list2)) {
-			// Combine list1 and list2 and call listsAreSat(list1&2, list3)
-			list1.addAll(list2);	
-			mergeCandidates.add(var2EvalMap.get(nodes.size()+1));
-			mergeCandidates.add(var2EvalMap.get(nodes.size()+2));
-		}
-		if(listsAreSat(list1, list3)) {
-			mergeCandidates.add(var2EvalMap.get(nodes.size()+3));
-		} else {
+		for(int i = index; i < var2EvalMap.size()+index; i++) {
+			list2 = mergeCanditatesList.get(i+1);
 			
+			if(listsAreSat(list1, list2)) {
+				// Combine list1 and list2 and call listsAreSat(list1&2, list3)
+				list1.addAll(list2);	
+				mergeCandidates.add(var2EvalMap.get(index));
+				mergeCandidates.add(var2EvalMap.get(i+1));
+			}
 		}
 		
 		return mergeCandidates;
