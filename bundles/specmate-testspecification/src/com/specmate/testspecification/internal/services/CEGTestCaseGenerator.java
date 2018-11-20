@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Logger;
@@ -91,6 +92,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	private static HashMap<Integer, List<BooleanFormula>> mergeCanditatesList = new HashMap<Integer, List<BooleanFormula>>();
 	HashMap<IModelNode, Formula> nodeMap = new HashMap<>();
 	HashMap<IModelNode, Formula> nodeToMeaningMap = new HashMap<>();
+	Map<Integer, NodeEvaluation> int2EvaluationMap = null;
 	
 	// TODO: make private fields and initialize them in the constructer with the context 
 	private static FormulaManager fmgr = null;
@@ -449,6 +451,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			pushCEGStructure(translator);
 			var2EvalMap = pushEvaluations(evaluations, translator, maxSat, maxVar);
 			
+			
 		} catch (ContradictionException c) {
 			throw new SpecmateException(c);
 		}
@@ -549,11 +552,52 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			if (!isUnsat) {
 				// The two evaluations can be satisfied together, add 3rd evaluation and check if this is also sat
 				return true;
-			}	
+			} 
 		} catch (Exception e) {
 			System.out.print("Exception while minimizing");
 		}
 		return false;
+	}
+	
+	private boolean listIsSat(List<BooleanFormula> list) {
+		try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
+			for(BooleanFormula constraint: list) {
+				prover.addConstraint(constraint);
+			}
+			
+			boolean isUnsat = prover.isUnsat();
+			if (!isUnsat) {
+				return true;
+			} 
+		} catch (Exception e) {
+			System.out.print("Exception while minimizing");
+		}
+		return false;
+	}
+	
+	
+	/*
+	 *  returns the merge candidates in descending order when sorting after satisfiability
+	 *  (not sat nodeEvalutations are at the end) --> this is needed for the already implemented logic for mergeCompatibleEvaluations 
+	 * 
+	 * 
+	 * */ 
+	
+	private HashMap<Integer, List<BooleanFormula>> orderEvaluations(Map<Integer, NodeEvaluation> var2EvalMap) {
+		List<BooleanFormula> hashSet = new ArrayList<>();
+		HashMap<Integer, List<BooleanFormula>> satMergeCanditates = new HashMap<Integer, List<BooleanFormula>>();
+		
+		
+		for(int i = nodes.size()+1; i < var2EvalMap.size()+nodes.size()+1; i++) {
+			List<BooleanFormula> candidates = mergeCanditatesList.get(i);
+			if(listIsSat(candidates)) {
+				hashSet.addAll(candidates);
+				satMergeCanditates.put(i, candidates);
+			} else {
+				continue;
+			}
+		}
+		return satMergeCanditates;
 	}
 	
 	private Set<NodeEvaluation> getModelWithoutMAXSAT(Map<Integer, NodeEvaluation> var2EvalMap) {
@@ -565,21 +609,47 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		 *  
 		 *  First entry starts at nodes.size + 1
 		 * */
+		if(int2EvaluationMap == null) {
+			int2EvaluationMap = var2EvalMap;
+		}
+		
+		// TODO: hier muss auch mit int2Evaluation gearbeitet werden, da va2EvalMap alle Evaluations enthält, wir aber nur die int2EvaluationMap evaluations benätigen
+		HashMap<Integer, List<BooleanFormula>> satMergeCanditates = orderEvaluations(int2EvaluationMap);
+		
+		
 		int index = nodes.size() + 1;
-		List<BooleanFormula> list1 = mergeCanditatesList.get(index);
+		int returnIndex = 0;
+		List<BooleanFormula> list1 = satMergeCanditates.get(index);
 		List<BooleanFormula> list2 = new ArrayList<>();
 		Set<NodeEvaluation> mergeCandidates = new HashSet<>();
 		
+		// TODO: Maybe change index, as the last comparison is with list2 = null 
 		for(int i = index; i < var2EvalMap.size()+index; i++) {
-			list2 = mergeCanditatesList.get(i+1);
+			list2 = satMergeCanditates.get(i+1);
 			
 			if(listsAreSat(list1, list2)) {
 				// Combine list1 and list2 and call listsAreSat(list1&2, list3)
 				list1.addAll(list2);	
 				mergeCandidates.add(var2EvalMap.get(index));
 				mergeCandidates.add(var2EvalMap.get(i+1));
+			} else {
+				// When we cannot merge the two lists, we need to return one list, because otherwiese mergeCompatibleEvalutations will fail 
+				returnIndex = index+1;
+				
 			}
 		}
+		
+		if (mergeCandidates.isEmpty()) {
+			for(int i = index; i< int2EvaluationMap.size()+index; i++) {
+				NodeEvaluation eval = int2EvaluationMap.get(i);
+				if(eval != null) {
+					mergeCandidates.add(int2EvaluationMap.get(i));
+				}
+				int2EvaluationMap.remove(i);
+				return mergeCandidates;
+			}			
+		}
+		
 		
 		return mergeCandidates;
 	}
