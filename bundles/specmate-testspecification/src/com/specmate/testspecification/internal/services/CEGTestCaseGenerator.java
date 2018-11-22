@@ -162,7 +162,6 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		Set<NodeEvaluation> inconsistent = evaluations.getRight();
 		int position = 0;
 		for (NodeEvaluation evaluation : consistent) {
-			// TODO: what is consistent and inconsistent
 			TestCase testCase = createTestCase(evaluation, specification, true);
 			testCase.setPosition(position++);
 			specification.getContents().add(testCase);
