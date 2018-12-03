@@ -3,7 +3,8 @@
 	jar/common-0.3000-38-gcdb252b.jar;version=file,\
 	jar/smtinterpol-2.1-255-gcdd5908-comp.jar;version=file,\
 	jar/com.microsoft.z3.jar;version=file,\
-	com.google.guava;version=21.0
+	com.google.guava;version=21.0,\
+	osgi.core,\
 
 Export-Package: \
 	org.sosy_lab,\
@@ -55,7 +56,9 @@ Export-Package: \
 	java_cup.anttask,\
 	java_cup.runtime,\
 	de.uni_freiburg.informatik.ultimate.util,\
-	org.sosy_lab.java_smt.utils
+	org.sosy_lab.java_smt.utils,\
+	com.microsoft.z3.*,\
+	com.microsoft.z3
 Private-Package: \
 	org.apache,\
 	org.apache.log4j,\
@@ -78,7 +81,8 @@ Private-Package: \
 	org.apache.log4j.or.sax,\
 	org.apache.log4j.spi,\
 	org.apache.log4j.varia,\
-	org.apache.log4j.xml
+	org.apache.log4j.xml,\
+	com.specmate.smt
 	
 Import-Package: \
     ap;resolution:=optional,\
@@ -93,3 +97,4 @@ Import-Package: \
 	javax.mail*;resolution:=optional,\
 	org.apache.tools.ant;resolution:=optional,\
 	*
+Bundle-Activator: com.specmate.smt.Activator
