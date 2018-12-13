@@ -1,10 +1,18 @@
+
 -buildpath: \
-	jar/java-smt-1.0.1.jar;version=file,\
-	jar/common-0.3000-38-gcdb252b.jar;version=file,\
-	jar/smtinterpol-2.1-255-gcdd5908-comp.jar;version=file,\
+	jar/animal-sniffer-annotations-1.14.jar;version=file,\
+	jar/checker-qual-2.0.0.jar;version=file,\
+	jar/common-0.3000-229-g055f2fd.jar;version=file,\
 	jar/com.microsoft.z3.jar;version=file,\
-	com.google.guava;version=21.0,\
+	jar/error_prone_annotations-2.0.18.jar;version=file,\
+	jar/j2objc-annotations-1.1.jar;version=file,\
+	jar/java-smt-2.0.0-alpha-43-g775a9d3.jar;version=file,\
+	jar/jsr305-3.0.2.jar;version=file,\
+	jar/junit-3.8.1.jar;version=file,\
+	jar/spotbugs-annotations-3.1.1.jar;version=file,\
 	osgi.core,\
+	com.google.guava;version=26.0
+
 
 Export-Package: \
 	org.sosy_lab,\
@@ -27,74 +35,33 @@ Export-Package: \
 	org.sosy_lab.java_smt.example,\
 	org.sosy_lab.java_smt.logging,\
 	org.sosy_lab.java_smt.solvers,\
-	org.sosy_lab.java_smt.solvers.mathsat5,\
-	org.sosy_lab.java_smt.solvers.princess,\
-	org.sosy_lab.java_smt.solvers.smtinterpol,\
 	org.sosy_lab.java_smt.solvers.z3,\
 	org.sosy_lab.java_smt.test,\
-	de.uni_freiburg,\
-	de.uni_freiburg.informatik,\
-	de.uni_freiburg.informatik.ultimate,\
-	de.uni_freiburg.informatik.ultimate.logic,\
-	de.uni_freiburg.informatik.ultimate.logic.simplification,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.aiger,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.convert,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.dimacs,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.dpll,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.horn,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.interpolate,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.model,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.proof,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.smtlib,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.smtlib2,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.theory,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.theory.cclosure,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.theory.linar,\
-	de.uni_freiburg.informatik.ultimate.smtinterpol.util,\
+	org.sosy_lab.java_smt.solvers.*,\
 	java_cup,\
 	java_cup.anttask,\
 	java_cup.runtime,\
-	de.uni_freiburg.informatik.ultimate.util,\
 	org.sosy_lab.java_smt.utils,\
 	com.microsoft.z3.*,\
-	com.microsoft.z3
+	com.microsoft.z3,\
+
 Private-Package: \
-	org.apache,\
-	org.apache.log4j,\
-	org.apache.log4j.chainsaw,\
-	org.apache.log4j.config,\
-	org.apache.log4j.helpers,\
-	org.apache.log4j.jdbc,\
-	org.apache.log4j.jmx,\
-	org.apache.log4j.lf5,\
-	org.apache.log4j.lf5.config,\
-	org.apache.log4j.lf5.util,\
-	org.apache.log4j.lf5.viewer,\
-	org.apache.log4j.lf5.viewer.categoryexplorer,\
-	org.apache.log4j.lf5.viewer.configure,\
-	org.apache.log4j.lf5.viewer.images,\
-	org.apache.log4j.net,\
-	org.apache.log4j.nt,\
-	org.apache.log4j.or,\
-	org.apache.log4j.or.jms,\
-	org.apache.log4j.or.sax,\
-	org.apache.log4j.spi,\
-	org.apache.log4j.varia,\
-	org.apache.log4j.xml,\
 	com.specmate.smt
-	
 Import-Package: \
-    ap;resolution:=optional,\
-	ap.*;resolution:=optional,\
 	com.microsoft.*;resolution:=optional,\
-	scala.*;resolution:=optional,\
-	com.google.common.collect.testing*;resolution:=optional,\
-	com.google.common.testing*;resolution:=optional,\
-	com.google.common.truth*;resolution:=optional,\
-	javax.annotation.meta*;resolution:=optional,\
-	com.sun.jdmk*;resolution:=optional,\
-	javax.mail*;resolution:=optional,\
 	org.apache.tools.ant;resolution:=optional,\
+	ap;resolution:=optional,\
+	ap.*;resolution:=optional,\
+	com.google.errorprone.*;resolution:=optional,\
+	de.uni_freiburg.informatik.ultimate.logic;resolution:=optional,\
+	de.uni_freiburg.informatik.ultimate.logic.*;resolution:=optional,\
+	de.uni_freiburg.informatik.ultimate.*;resolution:=optional,\
+	javax.annotation;resolution:=optional,\
+	javax.annotation.*;resolution:=optional,\
+	scala;resolution:=optional,\
+	scala.*;resolution:=optional,\
+	com.google.common.collect.*;resolution:=optional,\
+	com.google.common.graph;resolution:=optional,\
+	com.google.common.testing;resolution:=optional,\
+	com.google.common.truth;resolution:=optional,\
 	*
-Bundle-Activator: com.specmate.smt.Activator

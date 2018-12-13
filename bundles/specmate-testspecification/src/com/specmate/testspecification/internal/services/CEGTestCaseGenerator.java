@@ -1,7 +1,5 @@
 package com.specmate.testspecification.internal.services;
 
-import java.io.IOException;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -10,10 +8,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
-import java.util.logging.FileHandler;
-import java.util.logging.Handler;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
+import java.util.logging.Level;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -29,7 +24,6 @@ import org.sat4j.specs.ISolver;
 import org.sat4j.specs.IVecInt;
 import org.sat4j.specs.TimeoutException;
 import org.sat4j.tools.GateTranslator;
-import org.sosy_lab.common.ShutdownManager;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
@@ -40,15 +34,11 @@ import org.sosy_lab.java_smt.SolverContextFactory;
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers;
 import org.sosy_lab.java_smt.api.BooleanFormula;
 import org.sosy_lab.java_smt.api.BooleanFormulaManager;
-import org.sosy_lab.java_smt.api.FloatingPointFormula;
-import org.sosy_lab.java_smt.api.FloatingPointFormulaManager;
 import org.sosy_lab.java_smt.api.Formula;
 import org.sosy_lab.java_smt.api.FormulaManager;
-import org.sosy_lab.java_smt.api.FunctionDeclaration;
 import org.sosy_lab.java_smt.api.IntegerFormulaManager;
 import org.sosy_lab.java_smt.api.Model;
 import org.sosy_lab.java_smt.api.Model.ValueAssignment;
-import org.sosy_lab.java_smt.api.NumeralFormula;
 import org.sosy_lab.java_smt.api.NumeralFormula.IntegerFormula;
 import org.sosy_lab.java_smt.api.NumeralFormula.RationalFormula;
 import org.sosy_lab.java_smt.api.OptimizationProverEnvironment;
@@ -58,8 +48,6 @@ import org.sosy_lab.java_smt.api.RationalFormulaManager;
 import org.sosy_lab.java_smt.api.SolverContext;
 import org.sosy_lab.java_smt.api.SolverContext.ProverOptions;
 import org.sosy_lab.java_smt.api.SolverException;
-import org.sosy_lab.java_smt.solvers.z3.*;
-import org.sosy_lab.*;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -83,32 +71,6 @@ import com.specmate.model.testspecification.TestParameter;
 import com.specmate.model.testspecification.TestSpecification;
 import com.specmate.model.testspecification.TestspecificationFactory;
 import com.specmate.testspecification.internal.services.TaggedBoolean.ETag;
-import com.microsoft.z3.*;
-
-
-
-import com.google.common.collect.Lists;
-import java.util.List;
-import java.util.logging.Level;
-import org.sosy_lab.common.ShutdownNotifier;
-import org.sosy_lab.common.configuration.Configuration;
-import org.sosy_lab.common.configuration.InvalidConfigurationException;
-import org.sosy_lab.common.log.BasicLogManager;
-import org.sosy_lab.common.log.LogManager;
-import org.sosy_lab.common.rationals.Rational;
-import org.sosy_lab.java_smt.SolverContextFactory;
-import org.sosy_lab.java_smt.SolverContextFactory.Solvers;
-import org.sosy_lab.java_smt.api.BooleanFormulaManager;
-import org.sosy_lab.java_smt.api.IntegerFormulaManager;
-import org.sosy_lab.java_smt.api.NumeralFormula.IntegerFormula;
-import org.sosy_lab.java_smt.api.OptimizationProverEnvironment;
-import org.sosy_lab.java_smt.api.OptimizationProverEnvironment.OptStatus;
-import org.sosy_lab.java_smt.api.SolverContext;
-import org.sosy_lab.java_smt.api.SolverException;
-
-
-
-import org.osgi.service.log.LogService;
 
 public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNode> {
 	
@@ -130,6 +92,8 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	
 	public CEGTestCaseGenerator(TestSpecification specification) {
 		super(specification, CEGModel.class, CEGNode.class);
+		
+		
 		/*try {
 			testZ3();
 		} catch (InvalidConfigurationException e) {
@@ -143,88 +107,84 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			e.printStackTrace();
 		}
 		*/
+	
 		
 		 initSMTSolver();
-		 //optimization();
+		 optimization();
 		 classifyCEG();
 		
 		
 	}
 	
 	private void testZ3() throws InvalidConfigurationException, SolverException, InterruptedException {
-		Configuration config = Configuration.defaultConfiguration();
-	    LogManager logger = BasicLogManager.create(config);
-	    ShutdownNotifier notifier = ShutdownNotifier.createDummy();
-	    Solvers solver = Solvers.Z3; // Z3 works for optimization
-	    
+		 Configuration config = Configuration.defaultConfiguration();
+		    LogManager logger = BasicLogManager.create(config);
+		    ShutdownNotifier notifier = ShutdownNotifier.createDummy();
+		    Solvers solver = Solvers.Z3; // Z3 works for optimization
+		    
 
-	    try (SolverContext context =
-	            SolverContextFactory.createSolverContext(config, logger, notifier, solver);
-	        OptimizationProverEnvironment prover = context.newOptimizationProverEnvironment()) {
+		    try (SolverContext context =
+		            SolverContextFactory.createSolverContext(config, logger, notifier, solver);
+		        OptimizationProverEnvironment prover =
+		            context.newOptimizationProverEnvironment(ProverOptions.GENERATE_MODELS)) {
+		    	
+		    	
+		    	
+		    	FormulaManager fmgr = context.getFormulaManager();
+		      BooleanFormulaManager bmgr = context.getFormulaManager().getBooleanFormulaManager();
+		      IntegerFormulaManager imgr = context.getFormulaManager().getIntegerFormulaManager();
 
-	      BooleanFormulaManager bmgr = context.getFormulaManager().getBooleanFormulaManager();
-	      IntegerFormulaManager imgr = context.getFormulaManager().getIntegerFormulaManager();
+		      
+		      // create some symbols and formulas
+			    IntegerFormula x = imgr.makeVariable("x");
+			    IntegerFormula y = imgr.makeVariable("y");
+			    IntegerFormula z = imgr.makeVariable("z");
 
-	      optimizeWithWeights(prover, bmgr, imgr, logger);
+			    IntegerFormula zero = imgr.makeNumber(0);
+			    IntegerFormula four = imgr.makeNumber(4);
+			    IntegerFormula ten = imgr.makeNumber(10);
+
+			    IntegerFormula scoreBasic = imgr.makeNumber(0);
+			    IntegerFormula scoreLow = imgr.makeNumber(2);
+			    IntegerFormula scoreMedium = imgr.makeNumber(4);
+			    IntegerFormula scoreHigh = imgr.makeNumber(10);
+			    
+
+			    prover.addConstraint(
+			            bmgr.and(
+			                imgr.lessOrEquals(x, ten), // very important -> direct constraint
+			                imgr.lessOrEquals(y, ten), // very important -> direct constraint
+			                imgr.lessOrEquals(z, ten), // very important -> direct constraint
+			                imgr.equal(ten, imgr.add(x, imgr.add(y, z)))));
+
+			        // generate weighted formulas: if a formula should be satisfied,
+			        // use higher weight for the positive instance than for its negated instance.
+			        List<IntegerFormula> weights =
+			            Lists.newArrayList(
+			                bmgr.ifThenElse(imgr.lessOrEquals(x, zero), scoreHigh, scoreBasic), // important
+			                bmgr.ifThenElse(imgr.lessOrEquals(x, four), scoreHigh, scoreBasic), // important
+			                bmgr.ifThenElse(imgr.lessOrEquals(y, zero), scoreMedium, scoreBasic), // less important
+			                bmgr.ifThenElse(imgr.lessOrEquals(y, four), scoreMedium, scoreBasic), // less important
+			                bmgr.ifThenElse(imgr.lessOrEquals(z, zero), scoreLow, scoreBasic), // not important
+			                bmgr.ifThenElse(imgr.lessOrEquals(z, four), scoreHigh, scoreBasic) // important
+			                );
+
+			        // Maximize sum of weights
+			        int handle = prover.maximize(imgr.sum(weights));
+
+			        OptStatus response = prover.check();
+			        assert response == OptStatus.OPT;
+
+			        // for integer theory we get the optimal solution directly as model.
+			        // ideal solution: sum=32 with e.g. x=0,y=6,z=4  or  x=0,y=7,z=3  or  x=0,y=8,z=2 ...
+			        logger.log(
+			            Level.INFO,
+			            "maximal sum ",
+			            prover.upper(handle, Rational.ZERO).get(),
+			            "with model",
+			            prover.getModel());
 	    }
 	}
-	
-	private static void optimizeWithWeights(
-		      OptimizationProverEnvironment prover,
-		      BooleanFormulaManager bmgr,
-		      IntegerFormulaManager imgr,
-		      LogManager logger)
-		      throws InterruptedException, SolverException {
-
-		    // create some symbols and formulas
-		    IntegerFormula x = imgr.makeVariable("x");
-		    IntegerFormula y = imgr.makeVariable("y");
-		    IntegerFormula z = imgr.makeVariable("z");
-
-		    IntegerFormula zero = imgr.makeNumber(0);
-		    IntegerFormula four = imgr.makeNumber(4);
-		    IntegerFormula ten = imgr.makeNumber(10);
-
-		    IntegerFormula scoreBasic = imgr.makeNumber(0);
-		    IntegerFormula scoreLow = imgr.makeNumber(2);
-		    IntegerFormula scoreMedium = imgr.makeNumber(4);
-		    IntegerFormula scoreHigh = imgr.makeNumber(10);
-
-		    // add some very important constraints: x<10, y<10, z<10, 10=x+y+z
-		    prover.addConstraint(
-		        bmgr.and(
-		            imgr.lessOrEquals(x, ten), // very important -> direct constraint
-		            imgr.lessOrEquals(y, ten), // very important -> direct constraint
-		            imgr.lessOrEquals(z, ten), // very important -> direct constraint
-		            imgr.equal(ten, imgr.add(x, imgr.add(y, z)))));
-
-		    // generate weighted formulas: if a formula should be satisfied,
-		    // use higher weight for the positive instance than for its negated instance.
-		    List<IntegerFormula> weights =
-		        Lists.newArrayList(
-		            bmgr.ifThenElse(imgr.lessOrEquals(x, zero), scoreHigh, scoreBasic), // important
-		            bmgr.ifThenElse(imgr.lessOrEquals(x, four), scoreHigh, scoreBasic), // important
-		            bmgr.ifThenElse(imgr.lessOrEquals(y, zero), scoreMedium, scoreBasic), // less important
-		            bmgr.ifThenElse(imgr.lessOrEquals(y, four), scoreMedium, scoreBasic), // less important
-		            bmgr.ifThenElse(imgr.lessOrEquals(z, zero), scoreLow, scoreBasic), // not important
-		            bmgr.ifThenElse(imgr.lessOrEquals(z, four), scoreHigh, scoreBasic) // important
-		            );
-
-		    // Maximize sum of weights
-		    int handle = prover.maximize(imgr.sum(weights));
-
-		    OptStatus response = prover.check();
-		    assert response == OptStatus.OPT;
-
-		    // for integer theory we get the optimal solution directly as model.
-		    // ideal solution: sum=32 with e.g. x=0,y=6,z=4  or  x=0,y=7,z=3  or  x=0,y=8,z=2 ...
-		    logger.log(
-		        Level.INFO,
-		        "maximal sum ",
-		        prover.upper(handle, Rational.ZERO).get(),
-		        "with model",
-		        prover.getModel());
-		  }
 	
 	
 
@@ -570,13 +530,26 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			throw new SpecmateException(c);
 		}
 		try {
-			// TOD=: Change 
-			// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			/*
+			 *  Call a function which returns all evaluations which can be merged, if there are no merge candidates, return one evaluation
+			 * 
+			 *  Use logic from branch SMTInterpolOptimization to return one of the remaing evalautions
+			 * 
+			 * 
+			 * */
+			
 			int[] model = maxSat.findModel();
 			return extractEnabledEvaluations(var2EvalMap, model);
 		} catch (TimeoutException e) {
 			throw new SpecmateException(e);
 		}
+	}
+	
+	private Set<NodeEvaluation> findModelWithZ3(Map<Integer, NodeEvaluation> var2EvalMap) {
+		
+		
+		
+		return null;
 	}
 
 	private Set<NodeEvaluation> extractEnabledEvaluations(Map<Integer, NodeEvaluation> var2EvalMap, int[] model) {
@@ -865,7 +838,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	}
 		
 	private void optimization() {
-		try (OptimizationProverEnvironment optProver = context.newOptimizationProverEnvironment()) {
+		try (OptimizationProverEnvironment optProver = context.newOptimizationProverEnvironment(ProverOptions.GENERATE_MODELS)) {
 			   // create some symbols and formulas
 		    IntegerFormula x = imgr.makeVariable("x");
 		    IntegerFormula y = imgr.makeVariable("y");
@@ -903,8 +876,13 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		    // Maximize sum of weights
 		    int handle = optProver.maximize(imgr.sum(weights));
 
-		    OptStatus response = optProver.check();
-		    assert response == OptStatus.OPT;
+		    try {
+				OptStatus response = optProver.check();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		   
 
 		    // for integer theory we get the optimal solution directly as model.
 		    // ideal solution: sum=32 with e.g. x=0,y=6,z=4  or  x=0,y=7,z=3  or  x=0,y=8,z=2 ...
@@ -912,9 +890,9 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		} catch (SolverException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (InterruptedException e) {
+		} catch (InterruptedException e1) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			e1.printStackTrace();
 		}
 		    
 	}

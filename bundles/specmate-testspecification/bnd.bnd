@@ -17,5 +17,6 @@
 	specmate-emfrest-api;version=latest,\
 	specmate-rest;version=latest,\
 	specmate-smt;version=latest,\
-	com.google.guava;version=21.0
-Private-Package: com.specmate.testspecification.internal.services
+	com.google.guava;version=26.0
+Private-Package: \
+	com.specmate.testspecification.internal.services
