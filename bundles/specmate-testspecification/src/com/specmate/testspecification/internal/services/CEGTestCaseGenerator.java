@@ -76,11 +76,15 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	
 	private static List<BooleanFormula> booleanList = new ArrayList<BooleanFormula>();
 	private static HashMap<String, BooleanFormula> booleanVariables = new HashMap<String, BooleanFormula>();
+	private static List<BooleanFormula> booleanListForZ3 = new ArrayList<BooleanFormula>();
 	private static HashMap<String, BooleanFormula> nodeVariables = new HashMap<String, BooleanFormula>();
 	private static HashMap<String, RationalFormula> rationalVariables = new HashMap<String, RationalFormula>();
 	private static List<IntegerFormula> integerList = new ArrayList<IntegerFormula>();
 	HashMap<IModelNode, Formula> nodeMap = new HashMap<>();
 	HashMap<IModelNode, Formula> nodeToMeaningMap = new HashMap<>();
+	HashMap<IModelNode, Formula> nodeToMeaningMapForZ3 = new HashMap<>();
+	private static HashMap<Integer, List<BooleanFormula>> mergeCanditatesList = new HashMap<Integer, List<BooleanFormula>>();
+	Map<Integer, NodeEvaluation> int2EvaluationMap = null;
 	
 	// TODO: make private fields and initialize them in the constructer with the context 
 	private static FormulaManager fmgr = null;
@@ -91,103 +95,13 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	private static SolverContext context = null;
 	
 	public CEGTestCaseGenerator(TestSpecification specification) {
-		super(specification, CEGModel.class, CEGNode.class);
+		super(specification, CEGModel.class, CEGNode.class);		
 		
-		
-		/*try {
-			testZ3();
-		} catch (InvalidConfigurationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SolverException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		*/
-	
-		
-		 initSMTSolver();
-		 optimization();
-		 classifyCEG();
-		
-		
+		initSMTSolver();
+		// no return type needed
+		classifyCEG();
 	}
 	
-	private void testZ3() throws InvalidConfigurationException, SolverException, InterruptedException {
-		 Configuration config = Configuration.defaultConfiguration();
-		    LogManager logger = BasicLogManager.create(config);
-		    ShutdownNotifier notifier = ShutdownNotifier.createDummy();
-		    Solvers solver = Solvers.Z3; // Z3 works for optimization
-		    
-
-		    try (SolverContext context =
-		            SolverContextFactory.createSolverContext(config, logger, notifier, solver);
-		        OptimizationProverEnvironment prover =
-		            context.newOptimizationProverEnvironment(ProverOptions.GENERATE_MODELS)) {
-		    	
-		    	
-		    	
-		    	FormulaManager fmgr = context.getFormulaManager();
-		      BooleanFormulaManager bmgr = context.getFormulaManager().getBooleanFormulaManager();
-		      IntegerFormulaManager imgr = context.getFormulaManager().getIntegerFormulaManager();
-
-		      
-		      // create some symbols and formulas
-			    IntegerFormula x = imgr.makeVariable("x");
-			    IntegerFormula y = imgr.makeVariable("y");
-			    IntegerFormula z = imgr.makeVariable("z");
-
-			    IntegerFormula zero = imgr.makeNumber(0);
-			    IntegerFormula four = imgr.makeNumber(4);
-			    IntegerFormula ten = imgr.makeNumber(10);
-
-			    IntegerFormula scoreBasic = imgr.makeNumber(0);
-			    IntegerFormula scoreLow = imgr.makeNumber(2);
-			    IntegerFormula scoreMedium = imgr.makeNumber(4);
-			    IntegerFormula scoreHigh = imgr.makeNumber(10);
-			    
-
-			    prover.addConstraint(
-			            bmgr.and(
-			                imgr.lessOrEquals(x, ten), // very important -> direct constraint
-			                imgr.lessOrEquals(y, ten), // very important -> direct constraint
-			                imgr.lessOrEquals(z, ten), // very important -> direct constraint
-			                imgr.equal(ten, imgr.add(x, imgr.add(y, z)))));
-
-			        // generate weighted formulas: if a formula should be satisfied,
-			        // use higher weight for the positive instance than for its negated instance.
-			        List<IntegerFormula> weights =
-			            Lists.newArrayList(
-			                bmgr.ifThenElse(imgr.lessOrEquals(x, zero), scoreHigh, scoreBasic), // important
-			                bmgr.ifThenElse(imgr.lessOrEquals(x, four), scoreHigh, scoreBasic), // important
-			                bmgr.ifThenElse(imgr.lessOrEquals(y, zero), scoreMedium, scoreBasic), // less important
-			                bmgr.ifThenElse(imgr.lessOrEquals(y, four), scoreMedium, scoreBasic), // less important
-			                bmgr.ifThenElse(imgr.lessOrEquals(z, zero), scoreLow, scoreBasic), // not important
-			                bmgr.ifThenElse(imgr.lessOrEquals(z, four), scoreHigh, scoreBasic) // important
-			                );
-
-			        // Maximize sum of weights
-			        int handle = prover.maximize(imgr.sum(weights));
-
-			        OptStatus response = prover.check();
-			        assert response == OptStatus.OPT;
-
-			        // for integer theory we get the optimal solution directly as model.
-			        // ideal solution: sum=32 with e.g. x=0,y=6,z=4  or  x=0,y=7,z=3  or  x=0,y=8,z=2 ...
-			        logger.log(
-			            Level.INFO,
-			            "maximal sum ",
-			            prover.upper(handle, Rational.ZERO).get(),
-			            "with model",
-			            prover.getModel());
-	    }
-	}
-	
-	
-
 	@Override
 	protected void generateParameters() {
 		for (IModelNode node : nodes) {
@@ -240,7 +154,6 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		Set<NodeEvaluation> inconsistent = evaluations.getRight();
 		int position = 0;
 		for (NodeEvaluation evaluation : consistent) {
-			// TODO: what is consistent and inconsistent
 			TestCase testCase = createTestCase(evaluation, specification, true);
 			testCase.setPosition(position++);
 			specification.getContents().add(testCase);
@@ -323,7 +236,6 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		while (!intermediateEvaluations.isEmpty()) {
 			for (NodeEvaluation evaluation : intermediateEvaluations) {
 				consistentEvaluations.remove(evaluation);
-				// TODO: Per evaluation there is only one intermediate node? Why?
 				Optional<IModelNode> intermediateNodeOpt = getAnyIntermediateNode(evaluation);
 				AssertUtil.assertTrue(intermediateNodeOpt.isPresent());
 				IModelNode node = intermediateNodeOpt.get();
@@ -510,46 +422,151 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		Map<Integer, NodeEvaluation> var2EvalMap = new HashMap<>();
 
 		// Inititalize solver infrastructure
-		IPBSolver solver = org.sat4j.pb.SolverFactory.newResolution();
+		
+		/*PBSolver solver = org.sat4j.pb.SolverFactory.newResolution();
 		GateTranslator translator = new GateTranslator(solver);
 		WeightedMaxSatDecorator maxSat = new WeightedMaxSatDecorator(solver);
-
+		 */
+		
 		// We will need evaluations.size()+1 new variables, one set of varibles
 		// e_n to switch on and off each evaluation and one variable s to enable
 		// the implications s <==> (e=>n) where n is the evaluation result for a
 		// certain node.
 		// see pushEvaluations for the details
-		int maxVar = getAdditionalVar(evaluations.size() + 1);
-		// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-		maxSat.newVar(maxVar);
+
+		//int maxVar = getAdditionalVar(evaluations.size() + 1);
+		//maxSat.newVar(maxVar);
 
 		try {
-			pushCEGStructure(translator);
-			var2EvalMap = pushEvaluations(evaluations, translator, maxSat, maxVar);
+			pushCEGStructure();
+			var2EvalMap = pushEvaluations(evaluations);
 		} catch (ContradictionException c) {
 			throw new SpecmateException(c);
 		}
-		try {
-			/*
-			 *  Call a function which returns all evaluations which can be merged, if there are no merge candidates, return one evaluation
-			 * 
-			 *  Use logic from branch SMTInterpolOptimization to return one of the remaing evalautions
-			 * 
-			 * 
-			 * */
-			
-			int[] model = maxSat.findModel();
-			return extractEnabledEvaluations(var2EvalMap, model);
-		} catch (TimeoutException e) {
-			throw new SpecmateException(e);
-		}
+		
+		return findModelWithZ3(var2EvalMap);
 	}
 	
+
 	private Set<NodeEvaluation> findModelWithZ3(Map<Integer, NodeEvaluation> var2EvalMap) {
+		Set<NodeEvaluation> mergeCandidates = new HashSet<>();
 		
+		if(var2EvalMap.isEmpty()) {
+			return mergeCandidates;
+		}
 		
-		
-		return null;
+		try (OptimizationProverEnvironment optProver = context.newOptimizationProverEnvironment(ProverOptions.GENERATE_MODELS)) {
+
+		    IntegerFormula scoreBasic = imgr.makeNumber(0);
+		    IntegerFormula scoreHigh = imgr.makeNumber(1);
+		    
+		    
+		    /*
+		     * add the structure of the CEG as a hard constraint
+		     */
+		    for(BooleanFormula b: booleanListForZ3) {
+		    	try {
+					optProver.addConstraint(b);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}	
+		    }
+		    
+		    /*
+		     * add the meaning of the nodes as a hard constraint, as they are not dependent from the evaluations
+		     */
+		    for(Formula f: nodeToMeaningMapForZ3.values()) {
+		    	try {
+					optProver.addConstraint((BooleanFormula) f);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}	
+		    }
+		    		    
+		    
+		    /*
+		     * 	TODO:
+		     * 	Before maximizing check if all the evaluations can be satisfied (see listIsSat from SMTInterpolOpimiztation branch)
+		     */
+		    BooleanFormula a;
+		    List<IntegerFormula> optWeights = Lists.newArrayList();
+		    List<BooleanFormula> evaluationVariables = Lists.newArrayList();
+		    for(Integer index: var2EvalMap.keySet()) {
+		    	a = mergeCanditatesList.get(index).get(0);
+		    	
+		    	for(int i = 1; i < mergeCanditatesList.get(index).size(); i++) {
+		    		a = bmgr.and(mergeCanditatesList.get(index).get(i), a);
+		    	}
+		    	BooleanFormula numberOfEval = bmgr.makeVariable(index.toString() + "Evaluation");
+		    	evaluationVariables.add(numberOfEval);
+		    	a = bmgr.equivalence(a, numberOfEval);
+		    	optWeights.add(bmgr.ifThenElse(a, scoreHigh, scoreBasic));
+		    }
+		    BooleanFormula evalNodeFormula  = null; 
+		    for(BooleanFormula formula: evaluationVariables) {
+		    	if(evalNodeFormula == null) {
+		    		evalNodeFormula = bmgr.or(formula);
+		    	} else {
+		    		evalNodeFormula = bmgr.or(formula, evalNodeFormula);
+		    	}
+		    }
+		    try {
+				optProver.addConstraint(bmgr.equivalence(bmgr.makeTrue(), evalNodeFormula));
+			} catch (InterruptedException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+		   
+		    
+		    // TODO remove null and make for loop analog
+		    a = null;
+		    		
+
+		    // Maximize sum of weights
+		    int handle = optProver.maximize(imgr.sum(optWeights));
+
+		    try {
+				OptStatus response = optProver.check();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		   
+
+		    // for integer theory we get the optimal solution directly as model.
+		    // ideal solution: sum=32 with e.g. x=0,y=6,z=4  or  x=0,y=7,z=3  or  x=0,y=8,z=2 ...
+		    // getModelAssignments returns a list with [y:10, z:0, x:0]
+		    int mergeCount = optProver.upper(handle, Rational.ZERO).get().intValue();
+		    System.out.println("maximal sum " + optProver.upper(handle, Rational.ZERO).get() + "with model" + optProver.getModel());
+		    System.out.println(optProver.getModelAssignments());
+		    
+		    ImmutableList<ValueAssignment> valueAssignment = optProver.getModelAssignments();
+			//ArrayList<String> variableNames = new ArrayList<String>();
+			//list.forEach(assignment -> variableNames.add(assignment.getName())); 
+		   
+	    	for(ValueAssignment b: valueAssignment) {
+				// Search for the evaluation number
+	    		String variableName = b.getName();
+				if(variableName.matches("\\d*Evaluation")) {
+				variableName = variableName.replaceAll("[^0-9]", "");
+				boolean satisfied = (boolean) b.getValue();
+					if(satisfied) {
+						mergeCandidates.add(var2EvalMap.get(Integer.valueOf(variableName)));
+					}
+				}
+			}
+					
+		    /*
+		     * 	Now we have the assignment for each node, we need to return the evaluation with the corresponding generated assignment 
+		     * 	We also need to remove 
+		     */
+		} catch (SolverException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}	
+		return mergeCandidates;
 	}
 
 	private Set<NodeEvaluation> extractEnabledEvaluations(Map<Integer, NodeEvaluation> var2EvalMap, int[] model) {
@@ -568,33 +585,29 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		return toMerge;
 	}
 
-	private Map<Integer, NodeEvaluation> pushEvaluations(Set<NodeEvaluation> evaluations, GateTranslator translator,
-			WeightedMaxSatDecorator maxSat, int maxVar) throws ContradictionException {
+	private Map<Integer, NodeEvaluation> pushEvaluations(Set<NodeEvaluation> evaluations) throws ContradictionException {
 		Map<Integer, NodeEvaluation> var2EvalMap = new HashMap<>();
 
 		int nextVar = 1;
 		for (NodeEvaluation evaluation : evaluations) {
+			List<BooleanFormula> evaluationFormulas = new ArrayList<BooleanFormula>();
 			int varForEval = getAdditionalVar(nextVar);
 			var2EvalMap.put(varForEval, evaluation);
 			nextVar++;
 			for (IModelNode node : nodes) {
 				int varForNode = getVarForNode(node);
-				// maxSat.newVar(varForNode);
 				TaggedBoolean value = evaluation.get(node);
 				if (value != null) {
-					// TODO: Change
-					// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 					if (value.value) {
-						translator.or(maxVar, getVectorForVariables(-varForEval, varForNode));
+						evaluationFormulas.add(bmgr.equivalence((BooleanFormula) nodeMap.get(node), bmgr.makeTrue()));
 					} else {
-						translator.or(maxVar, getVectorForVariables(-varForEval, -varForNode));
+						evaluationFormulas.add(bmgr.equivalence((BooleanFormula) nodeMap.get(node), bmgr.makeFalse()));
 					}
 				}
 			}
-			maxSat.addSoftClause(1, getVectorForVariables(varForEval));
+			mergeCanditatesList.put(varForEval, evaluationFormulas);
 		}
-		// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-		translator.gateTrue(maxVar);
+		
 		return var2EvalMap;
 	}
 
@@ -635,11 +648,13 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			for(BooleanFormula formula: booleanList) {
 				prover.addConstraint(formula);
 			}
-
+			
 			booleanList.clear();
+			
 			for(IModelNode node: nodeToMeaningMap.keySet()) {
 				prover.addConstraint((BooleanFormula) nodeToMeaningMap.get(node));
 			} 
+			
 			nodeToMeaningMap.clear();
 			//prover.addConstraint(booleanList.get(1));
 			
@@ -668,6 +683,9 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 				}
 				
 			} else {
+				/*
+				 * TODO: When an evaluation is not satisfiable, we need to handle this case differently 
+				 */
 				System.out.println("Unsat");
 			}
 		} catch (Exception e) {
@@ -680,33 +698,6 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		}
 		
 		return filled;
-		
-		/*try {
-			NodeEvaluation filled = new NodeEvaluation();
-			// TODO: get Model from SMT solver
-			// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-			int[] model = solver.findModel();
-			if (model == null) {
-				throw new SpecmateException("Could not determine consistent test values.");
-			}
-			for (int v : model) {
-				// TODO: evaluate each node and convert it back to a number 
-				//ImmutableList<> list = model.getModelAssignments();
-				//if(evaluate(Integer.toString( ))) {
-					// Boolean was true, give him the node number as positive int
-				//} else {
-					// Boolean was false, give him the node number as negative int
-				//}
-				
-				// Afterwards remove from the list
-				
-				System.out.println(v);
-				setModelValue(evaluation, filled, v);
-			}
-			return filled;
-		} catch (TimeoutException e) {
-			throw new SpecmateException(e);
-		} */
 	}
 
 	/**
@@ -732,14 +723,9 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	private GateTranslator initSolver(NodeEvaluation evaluation) throws SpecmateException {
 		GateTranslator translator = new GateTranslator(SolverFactory.newLight());
 		
-		/*try {
-			context = SolverContextFactory.createSolverContext(Solvers.PRINCESS);
-		} catch (Exception e) {
-			System.out.println("Exception");
-		} */
 		try {
-			pushCEGStructure(translator);
-			pushEvaluation(evaluation, translator);
+			pushCEGStructure();
+			pushEvaluation(evaluation);
 		} catch (ContradictionException e) {
 			throw new SpecmateException(e);
 		}
@@ -748,7 +734,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 
 	// TODO: For each node in every evaluation we need to set the boolean value (this is what usually happens) but also the corresponding Integer Formula
 	// We need to check for each node if it is a boolean or if there is also an Integer value behind it --> Future Work 
-	private void pushEvaluation(NodeEvaluation evaluation, GateTranslator translator) throws ContradictionException {
+	private void pushEvaluation(NodeEvaluation evaluation) throws ContradictionException {
 		for (IModelNode node : nodes) {
 			int varForNode = getVarForNode(node);
 			TaggedBoolean value = evaluation.get(node);
@@ -765,42 +751,7 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 	}
 
 	// Construct logic from CEG and add it to the translator
-	private void pushCEGStructure(GateTranslator translator) throws ContradictionException {
-		System.out.println("Anfang");
-		
-
-		/*IntegerFormula a = imgr.makeVariable("a");
-		IntegerFormula c = imgr.makeVariable("c");
-		List<BooleanFormula> list = new ArrayList<BooleanFormula>();
-		
-		list.add(imgr.greaterOrEquals(a, imgr.makeNumber(20)));
-		
-		BooleanFormula aGreater = imgr.greaterOrEquals(a, imgr.makeNumber(20));
-		BooleanFormula cGreater = imgr.greaterOrEquals(c, imgr.makeNumber(8));
-		
-		BooleanFormula b = bmgr.makeVariable("b");
-		BooleanFormula bTrue = bmgr.makeTrue();
-		
-		
-		
-		// make number is node.getCondition
-		BooleanFormula constraint = bmgr.and(imgr.greaterOrEquals(a, imgr.makeNumber(18)),
-				imgr.lessOrEquals(a, imgr.makeNumber(25)));
-
-		try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
-			prover.addConstraint(aGreater);
-			prover.addConstraint(constraint);
-			
-			boolean isUnsat = prover.isUnsat();
-			if (!isUnsat) {
-				Model model = prover.getModel();
-				BigInteger value = model.evaluate(a);
-				System.out.println("Evaluation: " + value);
-			}
-		} catch (Exception e) {
-			System.out.println("Exception2");
-		} 
-		*/
+	private void pushCEGStructure() throws ContradictionException {
 
 		for (IModelNode node : nodes) {
 			
@@ -808,7 +759,6 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			ArrayList<BooleanFormula> boolList = getPredecessorBooleanList(node);
 			if (!boolList.isEmpty()) {
 				if (((CEGNode) node).getType() == NodeType.AND) {
-					// TODO: Add Integer Formula
 					BooleanFormula and = bmgr.equivalence(boolForNode, bmgr.and(boolList));  
 					booleanList.add(and);
 				} else {
@@ -826,6 +776,8 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 			System.out.println("BooleanFormula: " + f.toString());
 		}
 		
+		booleanListForZ3 = booleanList;
+		
 		for(IModelNode mapNode: nodeMap.keySet()) {
 			int index = nodes.indexOf(mapNode) + 1; 
 			nodeToMeaningMap.put(mapNode, bmgr.equivalence(nodeVariables.get(Integer.toString(index)), (BooleanFormula) nodeMap.get(mapNode)));
@@ -835,67 +787,9 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
             String value = nodeToMeaningMap.get(node).toString();  
             System.out.println("nodeToMeaningMap:" + node + " " + value);  
 		} 
+		nodeToMeaningMapForZ3 = nodeToMeaningMap;
 	}
 		
-	private void optimization() {
-		try (OptimizationProverEnvironment optProver = context.newOptimizationProverEnvironment(ProverOptions.GENERATE_MODELS)) {
-			   // create some symbols and formulas
-		    IntegerFormula x = imgr.makeVariable("x");
-		    IntegerFormula y = imgr.makeVariable("y");
-		    IntegerFormula z = imgr.makeVariable("z");
-
-		    IntegerFormula zero = imgr.makeNumber(0);
-		    IntegerFormula four = imgr.makeNumber(4);
-		    IntegerFormula ten = imgr.makeNumber(10);
-
-		    IntegerFormula scoreBasic = imgr.makeNumber(0);
-		    IntegerFormula scoreLow = imgr.makeNumber(2);
-		    IntegerFormula scoreMedium = imgr.makeNumber(4);
-		    IntegerFormula scoreHigh = imgr.makeNumber(10);
-
-		    // add some very important constraints: x<10, y<10, z<10, 10=x+y+z
-		    optProver.addConstraint(
-		        bmgr.and(
-		            imgr.lessOrEquals(x, ten), // very important -> direct constraint
-		            imgr.lessOrEquals(y, ten), // very important -> direct constraint
-		            imgr.lessOrEquals(z, ten), // very important -> direct constraint
-		            imgr.equal(ten, imgr.add(x, imgr.add(y, z)))));
-
-		    // generate weighted formulas: if a formula should be satisfied,
-		    // use higher weight for the positive instance than for its negated instance.
-		    List<IntegerFormula> weights =
-		        Lists.newArrayList(
-		            bmgr.ifThenElse(imgr.lessOrEquals(x, zero), scoreHigh, scoreBasic), // important
-		            bmgr.ifThenElse(imgr.lessOrEquals(x, four), scoreHigh, scoreBasic), // important
-		            bmgr.ifThenElse(imgr.lessOrEquals(y, zero), scoreMedium, scoreBasic), // less important
-		            bmgr.ifThenElse(imgr.lessOrEquals(y, four), scoreMedium, scoreBasic), // less important
-		            bmgr.ifThenElse(imgr.lessOrEquals(z, zero), scoreLow, scoreBasic), // not important
-		            bmgr.ifThenElse(imgr.lessOrEquals(z, four), scoreHigh, scoreBasic) // important
-		            );
-
-		    // Maximize sum of weights
-		    int handle = optProver.maximize(imgr.sum(weights));
-
-		    try {
-				OptStatus response = optProver.check();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		   
-
-		    // for integer theory we get the optimal solution directly as model.
-		    // ideal solution: sum=32 with e.g. x=0,y=6,z=4  or  x=0,y=7,z=3  or  x=0,y=8,z=2 ...
-		    System.out.println("maximal sum " + optProver.upper(handle, Rational.ZERO).get() + "with model" + optProver.getModel());
-		} catch (SolverException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InterruptedException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		    
-	}
 	
 	/** Returns the CEG node for a given variable (given as int) */
 	private IModelNode getNodeForVar(int i) {
