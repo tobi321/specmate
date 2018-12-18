@@ -258,7 +258,11 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		Set<NodeEvaluation> inconsistent = mergedEvals.getRight();
 		Set<NodeEvaluation> filled = new HashSet<>();
 		for (NodeEvaluation eval : merged) {
-			filled.add(fill(eval));
+			NodeEvaluation temp = fill(eval);
+			if (temp.isEmpty()) {
+				continue;
+			}
+			filled.add(temp);
 		}
 		return Pair.of(filled, inconsistent);
 	}
