@@ -937,10 +937,11 @@ public class CEGTestCaseGenerator extends TestCaseGeneratorBase<CEGModel, CEGNod
 		for (IModelConnection conn : node.getIncomingConnections()) {
 			IModelNode pre = conn.getSource();
 			int var = getVarForNode((CEGNode) pre);
+			BooleanFormula boolNode = bmgr.makeVariable(Integer.toString(var));
 			if (((CEGConnection) conn).isNegate()) {
-				var *= -1;
+				boolNode = bmgr.not(boolNode);
 			}
-			list.add(bmgr.makeVariable(Integer.toString(var)));
+			list.add(boolNode);
 		}
 		return list;
 	}
